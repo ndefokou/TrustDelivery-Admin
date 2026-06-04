@@ -1,0 +1,101 @@
+# ─────────────────────────────────────────────
+# Root-level
+# ─────────────────────────────────────────────
+
+# Environment files (credentials, secrets)
+.env
+.env.local
+.env.*.local
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporary / swap files
+*.log
+*.tmp
+*.temp
+*.cache
+
+# ─────────────────────────────────────────────
+# FRONTEND (Node.js / Vite / React)
+# ─────────────────────────────────────────────
+
+# Dependencies
+frontend/node_modules/
+node_modules/
+
+# Build output
+frontend/dist/
+frontend/build/
+dist/
+build/
+
+# Package manager lock files (optional: uncomment one if you use a specific manager)
+# frontend/package-lock.json
+# frontend/yarn.lock
+# frontend/pnpm-lock.yaml
+
+# Vite
+frontend/.vite/
+
+# Vercel / Netlify / Other deploy
+.vercel
+.netlify
+
+# ─────────────────────────────────────────────
+# BACKEND (Rust / Cargo)
+# ─────────────────────────────────────────────
+
+# Rust build artifacts
+backend/target/
+target/
+
+# Cargo lock — keep for binaries, ignore for libraries.
+# Since this is an application (bin), we KEEP Cargo.lock.
+# If you want to ignore it, uncomment below:
+# backend/Cargo.lock
+
+# SQLx offline query data (if generated)
+backend/.sqlx/
+.sqlx/
+
+# Cargo registry index cache (rare, but just in case)
+.cargo/
+
+# Rust incremental compilation
+*.rlib
+*.rmeta
+
+# ─────────────────────────────────────────────
+# DATABASE / MIGRATION
+# ─────────────────────────────────────────────
+
+# Local SQLite / dev DB files (if any)
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# ─────────────────────────────────────────────
+# TESTS / COVERAGE
+# ─────────────────────────────────────────────
+
+# Coverage reports
+coverage/
+*.lcov
+
+# ─────────────────────────────────────────────
+# LOCAL CONFIG
+# ─────────────────────────────────────────────
+
+# Any local-only config overrides
+backend/.env
+frontend/.env

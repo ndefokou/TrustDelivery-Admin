@@ -1,79 +1,234 @@
 # TrustDelivery Admin Panel
 
+A modern, enterprise-grade logistics administration platform for TrustDelivery in Yaoundé, Cameroon.
+
 ## Overview
 
-The TrustDelivery Admin Panel is the operational center for managing deliveries across the TrustDelivery platform.
-It is designed for the administrator team responsible for assigning riders, monitoring delivery progress, and tracking overall performance.
+TrustDelivery Admin Panel is the operational control center for managing deliveries, riders, merchants, and payments. It provides:
 
-The admin panel receives all paid delivery requests created by merchants and provides the tools needed to keep deliveries moving smoothly.
+- **Delivery transparency** - Full visibility into delivery lifecycle
+- **Rider accountability** - Track rider performance and expenses
+- **Proof of delivery** - OTP verification for completed deliveries
+- **Merchant visibility** - Business insights for merchants
+- **Operational control** - Centralized management of all operations
 
-## Key Responsibilities
+## Tech Stack
 
-* View current delivery workflow at a glance
-* Assign deliveries to riders
-* Monitor delivery statuses in real time
-* Track rider activity and operational performance
-* Review completed and failed deliveries
-* Analyze revenue and delivery metrics
+### Backend
+- **Rust** with Actix-web framework
+- **PostgreSQL** (Supabase) for database
+- **JWT** for authentication
+- **SQLx** for database queries
 
-## Main Sections
+### Frontend
+- **React 18** with TypeScript
+- **Vite** for build tooling
+- **Tailwind CSS** for styling
+- **React Query** for data fetching
+- **Zustand** for state management
+- **Recharts** for charts
+- **React Router** for navigation
+- **Lucide Icons** for icons
 
-### Administrator Dashboard
+## Project Structure
 
-The dashboard provides a summary of the current operations:
+```
+TrustDelivery-Admin/
+├── backend/                 # Rust backend
+│   ├── src/
+│   │   ├── config/          # App configuration
+│   │   ├── handlers/        # API handlers
+│   │   ├── middleware/      # Auth middleware
+│   │   ├── models/         # Data models
+│   │   ├── services/        # Business logic
+│   │   ├── utils/           # Utilities
+│   │   └── main.rs          # Entry point
+│   ├── migrations/          # SQL migrations
+│   ├── Cargo.toml           # Rust dependencies
+│   └── .env                 # Environment variables
+├── frontend/                # React frontend
+│   ├── src/
+│   │   ├── components/      # UI components
+│   │   ├── hooks/           # Custom hooks
+│   │   ├── lib/             # Utilities
+│   │   ├── pages/           # Page components
+│   │   ├── stores/          # Zustand stores
+│   │   ├── types/           # TypeScript types
+│   │   ├── App.tsx          # App component
+│   │   └── main.tsx         # Entry point
+│   ├── package.json         # Node dependencies
+│   ├── tailwind.config.js   # Tailwind config
+│   └── .env                 # Environment variables
+└── README.md                # This file
+```
 
-* Active riders
-* Deliveries awaiting assignment
-* Deliveries currently in transit
-* Delivered packages
-* Failed deliveries
-* Revenue generated
+## Setup Instructions
 
-This is the primary control panel for daily operations and fast decision-making.
+### Prerequisites
 
-### Delivery Queue
+- **Rust** (1.70+) - Install from https://rustup.rs
+- **Node.js** (18+) - Install from https://nodejs.org
+- **PostgreSQL** (15+) or Supabase account
+- **pnpm/npm/yarn** package manager
 
-All paid delivery requests arrive here after merchants complete payment.
-Each request includes merchant and destination details so the administrator can prioritize correctly.
+### Database Setup (Supabase)
 
-Example delivery queue item:
+1. Create a new Supabase project at https://supabase.com
+2. Go to SQL Editor
+3. Run `backend/migrations/001_initial_schema.sql`
+4. Run `backend/migrations/002_seed_data.sql` for sample data
+5. Copy your database connection string
 
-* Delivery #1001
-* Merchant: Arthur Electronics
-* Destination: Bastos
+### Backend Setup
 
-### Rider Assignment
+```bash
+cd backend
 
-Admins choose the best available rider for each delivery.
-Assignment decisions are based on:
+# Copy environment file
+cp .env.example .env
 
-* Rider availability
-* Current workload
-* Delivery area
-* Performance history
+# Edit .env with your Supabase credentials
+# DATABASE_URL=postgresql://postgres:[PASSWORD]@[PROJECT].supabase.co:5432/postgres
 
-Once a rider is assigned, the delivery status changes to `Assigned` and the rider begins execution.
+# Build and run
+cargo build --release
+cargo run
+```
 
-## Delivery Status Workflow
+Backend will run at http://localhost:8080
 
-The admin panel tracks delivery progress using the following statuses:
+### Frontend Setup
 
-* `Awaiting Assignment`
-* `Assigned`
-* `In Transit`
-* `Delivered`
-* `Failed`
+```bash
+cd frontend
 
-These statuses allow administrators to monitor the full lifecycle of every delivery and intervene when needed.
+# Install dependencies
+npm install
 
-## Why It Matters
+# Copy environment file
+cp .env.example .env
 
-The admin panel is critical because it ensures that deliveries are managed centrally and transparently.
-It reduces the chances of failed or lost deliveries by providing clear visibility into every delivery event and enabling faster action by the operations team.
+# Edit .env if needed
+# VITE_API_URL=http://localhost:8080/api
 
-## Notes for Admin Users
+# Run development server
+npm run dev
+```
 
-* Only paid deliveries appear in the admin queue.
-* Assignments should consider rider capacity and proximity.
-* Regularly monitor the dashboard to detect delays and failed deliveries early.
-* Use delivery performance and revenue metrics to improve rider allocation and service quality.
+Frontend will run at http://localhost:3000
+
+## Features
+
+### Dashboard
+- KPI cards with trend indicators
+- Deliveries per day chart
+- Revenue per day chart
+- Delivery status distribution pie chart
+- Top performing riders leaderboard
+
+### Deliveries Management
+- Full deliveries list with filtering
+- Delivery details with timeline
+- Assign riders to deliveries
+- Bulk assignment for awaiting queue
+- Print delivery receipts
+
+### Awaiting Assignment Queue
+- Priority list of deliveries waiting for riders
+- Bulk selection and assignment
+- Waiting time indicators
+- Urgent delivery highlighting
+
+### Rider Management
+- Rider list with performance metrics
+- Add/edit/suspend/activate riders
+- Rider profile with statistics
+- Expense management and approval
+
+### Merchant Management
+- Merchant list with statistics
+- Suspend/activate merchants
+- Business information tracking
+- Activity monitoring
+
+### Reports
+- Daily/Weekly/Monthly reports
+- Revenue tracking
+- Failed deliveries analysis
+- Rider performance reports
+
+### Payments
+- Payment history
+- Filter by status/date/merchant
+- Orange Money & MTN Mobile Money tracking
+
+### Settings
+- Company information
+- Distance-based pricing rules
+- User management
+
+## API Endpoints
+
+### Authentication
+- `POST /api/auth/login` - Login
+- `POST /api/auth/register` - Register new admin
+
+### Deliveries
+- `GET /api/deliveries` - List deliveries
+- `GET /api/deliveries/awaiting` - Get awaiting assignments
+- `GET /api/deliveries/:id` - Get delivery details
+- `POST /api/deliveries` - Create delivery
+- `PUT /api/deliveries/:id` - Update delivery
+- `POST /api/deliveries/:id/assign` - Assign rider
+- `DELETE /api/deliveries/:id` - Cancel delivery
+
+### Riders
+- `GET /api/riders` - List riders
+- `GET /api/riders/:id` - Get rider details
+- `POST /api/riders` - Create rider
+- `PUT /api/riders/:id` - Update rider
+- `POST /api/riders/:id/suspend` - Suspend rider
+- `POST /api/riders/:id/activate` - Activate rider
+- `GET /api/riders/:id/expenses` - Get rider expenses
+
+### Merchants
+- `GET /api/merchants` - List merchants
+- `GET /api/merchants/:id` - Get merchant details
+- `POST /api/merchants` - Create merchant
+- `PUT /api/merchants/:id` - Update merchant
+- `POST /api/merchants/:id/suspend` - Suspend merchant
+
+### Dashboard
+- `GET /api/dashboard` - Get dashboard data
+
+### Reports
+- `GET /api/reports/daily` - Daily report
+- `GET /api/reports/weekly` - Weekly report
+- `GET /api/reports/monthly` - Monthly report
+- `GET /api/reports/revenue` - Revenue report
+- `GET /api/reports/rider-performance` - Rider performance
+- `GET /api/reports/failed-deliveries` - Failed deliveries report
+
+## Demo Credentials
+
+```
+Email: admin@trustdelivery.cm
+Password: admin123
+```
+
+## Design System
+
+### Colors
+- **Primary**: `#0F172A` - Dark backgrounds
+- **Secondary**: `#2563EB` - Buttons, links
+- **Success**: `#16A34A` - Completed, active
+- **Warning**: `#F59E0B` - Pending, awaiting
+- **Danger**: `#DC2626` - Errors, failed
+
+### Typography
+- System font stack
+- Monospace for IDs and codes
+
+## License
+
+MIT License - Copyright 2024 TrustDelivery
