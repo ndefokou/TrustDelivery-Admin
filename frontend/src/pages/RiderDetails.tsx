@@ -34,12 +34,14 @@ export default function RiderDetails() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" onClick={() => navigate('/riders')}>
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+        <Button variant="ghost" onClick={() => navigate('/riders')} className="self-start">
           <ArrowLeft size={20} />
         </Button>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{rider.full_name}</h1>
-        <StatusBadge status={rider.status} />
+        <div className="flex flex-wrap items-center gap-2">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{rider.full_name}</h1>
+          <StatusBadge status={rider.status} />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -52,7 +54,7 @@ export default function RiderDetails() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-gray-500">Full Name</p>
                   <p className="font-medium">{rider.full_name}</p>
@@ -75,11 +77,11 @@ export default function RiderDetails() {
                     {rider.motorbike_registration}
                   </p>
                 </div>
-                <div className="col-span-2">
+                <div className="col-span-1 sm:col-span-2">
                   <p className="text-sm text-gray-500">Address</p>
-                  <p className="flex items-center gap-2">
-                    <MapPin size={16} className="text-secondary" />
-                    {rider.address}
+                  <p className="flex items-start gap-2">
+                    <MapPin size={16} className="text-secondary flex-shrink-0 mt-0.5" />
+                    <span>{rider.address}</span>
                   </p>
                 </div>
               </div>

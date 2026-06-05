@@ -49,17 +49,17 @@ export default function Settings() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Settings</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Settings</h1>
       </div>
 
-      <div className="flex gap-4">
-        <div className="w-48 space-y-1">
+      <div className="flex flex-col lg:flex-row gap-4">
+        <div className="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0 -mx-4 sm:mx-0 px-4 sm:px-0">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`w-full flex items-center gap-3 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+              className={`flex items-center gap-3 px-4 py-2 text-sm font-medium rounded-lg transition-colors whitespace-nowrap lg:w-48 ${
                 activeTab === tab.id
                   ? 'bg-secondary text-white'
                   : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-primary-700'
@@ -71,7 +71,7 @@ export default function Settings() {
           ))}
         </div>
 
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           {activeTab === 'company' && (
             <Card>
               <CardHeader>
@@ -120,7 +120,7 @@ export default function Settings() {
                 </p>
                 <div className="space-y-4">
                   {pricingRules.map((rule, index) => (
-                    <div key={index} className="grid grid-cols-4 gap-4 p-4 bg-gray-50 dark:bg-primary-700 rounded-lg">
+                    <div key={index} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-3 sm:p-4 bg-gray-50 dark:bg-primary-700 rounded-lg">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                           Min Distance (km)
@@ -197,37 +197,39 @@ export default function Settings() {
                 <CardTitle>User Management</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200 dark:divide-primary-700">
-                    <thead className="bg-gray-50 dark:bg-primary-700">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">User</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Email</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Role</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Status</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white dark:bg-primary-800 divide-y divide-gray-200 dark:divide-primary-700">
-                      <tr>
-                        <td className="px-6 py-4 whitespace-nowrap">Admin User</td>
-                        <td className="px-6 py-4 whitespace-nowrap">admin@trustdelivery.cm</td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="px-2 py-1 text-xs font-medium bg-secondary-100 text-secondary-800 dark:bg-secondary-900 dark:text-secondary-300 rounded-full">
-                            Super Admin
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="px-2 py-1 text-xs font-medium bg-success-100 text-success-800 dark:bg-success-900 dark:text-success-300 rounded-full">
-                            Active
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <Button size="sm" variant="secondary">Edit</Button>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
+                <div className="overflow-x-auto -mx-4 sm:mx-0">
+                  <div className="min-w-[600px] px-4 sm:px-0">
+                    <table className="min-w-full divide-y divide-gray-200 dark:divide-primary-700">
+                      <thead className="bg-gray-50 dark:bg-primary-700">
+                        <tr>
+                          <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">User</th>
+                          <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Email</th>
+                          <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Role</th>
+                          <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Status</th>
+                          <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white dark:bg-primary-800 divide-y divide-gray-200 dark:divide-primary-700">
+                        <tr>
+                          <td className="px-4 sm:px-6 py-4 whitespace-nowrap">Admin User</td>
+                          <td className="px-4 sm:px-6 py-4 whitespace-nowrap">admin@trustdelivery.cm</td>
+                          <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                            <span className="px-2 py-1 text-xs font-medium bg-secondary-100 text-secondary-800 dark:bg-secondary-900 dark:text-secondary-300 rounded-full">
+                              Super Admin
+                            </span>
+                          </td>
+                          <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                            <span className="px-2 py-1 text-xs font-medium bg-success-100 text-success-800 dark:bg-success-900 dark:text-success-300 rounded-full">
+                              Active
+                            </span>
+                          </td>
+                          <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                            <Button size="sm" variant="secondary">Edit</Button>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
                 <div className="pt-4">
                   <Button>Add New User</Button>

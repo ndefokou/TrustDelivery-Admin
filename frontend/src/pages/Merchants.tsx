@@ -92,12 +92,12 @@ export default function Merchants() {
             <Thead>
               <Tr>
                 <Th>Business</Th>
-                <Th>Contact</Th>
+                <Th className="hidden sm:table-cell">Contact</Th>
                 <Th>Status</Th>
-                <Th>Deliveries</Th>
-                <Th>Revenue</Th>
-                <Th>Active</Th>
-                <Th>Joined</Th>
+                <Th className="hidden md:table-cell">Deliveries</Th>
+                <Th className="hidden md:table-cell">Revenue</Th>
+                <Th className="hidden sm:table-cell">Active</Th>
+                <Th className="hidden lg:table-cell">Joined</Th>
                 <Th>Actions</Th>
               </Tr>
             </Thead>
@@ -120,30 +120,31 @@ export default function Merchants() {
                 merchants?.merchants?.map((merchant: any) => (
                   <Tr key={merchant.id} className="cursor-pointer" onClick={() => navigate(`/merchants/${merchant.id}`)}>
                     <Td>
-                      <div>
-                        <p className="font-medium">{merchant.business_name}</p>
-                        <p className="text-xs text-gray-500">{merchant.owner_name}</p>
+                      <div className="min-w-0">
+                        <p className="font-medium truncate">{merchant.business_name}</p>
+                        <p className="text-xs text-gray-500 truncate">{merchant.owner_name}</p>
+                        <p className="text-xs text-gray-500 sm:hidden">{merchant.email}</p>
                       </div>
                     </Td>
-                    <Td>
+                    <Td className="hidden sm:table-cell">
                       <div>
-                        <p className="text-sm">{merchant.email}</p>
+                        <p className="text-sm truncate max-w-[200px]">{merchant.email}</p>
                         <p className="text-xs text-gray-500">{merchant.phone_number}</p>
                       </div>
                     </Td>
                     <Td><StatusBadge status={merchant.status} /></Td>
-                    <Td>{merchant.total_deliveries}</Td>
-                    <Td className="font-medium">{merchant.total_revenue.toLocaleString()} FCFA</Td>
-                    <Td>
+                    <Td className="hidden md:table-cell">{merchant.total_deliveries}</Td>
+                    <Td className="hidden md:table-cell font-medium">{merchant.total_revenue.toLocaleString()} FCFA</Td>
+                    <Td className="hidden sm:table-cell">
                       <span className="text-secondary">{merchant.active_deliveries}</span>
                     </Td>
-                    <Td>{format(new Date(merchant.created_at), 'MMM dd, yyyy')}</Td>
+                    <Td className="hidden lg:table-cell">{format(new Date(merchant.created_at), 'MMM dd, yyyy')}</Td>
                     <Td>
                       <div className="flex items-center gap-1">
                         <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); navigate(`/merchants/${merchant.id}`) }}>
                           <Eye size={14} />
                         </Button>
-                        <Button size="sm" variant="ghost" onClick={(e) => e.stopPropagation()}>
+                        <Button size="sm" variant="ghost" onClick={(e) => e.stopPropagation()} className="hidden sm:flex">
                           <Edit size={14} />
                         </Button>
                         {merchant.status !== 'suspended' && (

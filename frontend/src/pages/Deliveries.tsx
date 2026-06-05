@@ -110,12 +110,12 @@ export default function Deliveries() {
             <Thead>
               <Tr>
                 <Th>ID</Th>
-                <Th>Product</Th>
+                <Th className="hidden sm:table-cell">Product</Th>
                 <Th>Customer</Th>
-                <Th>Address</Th>
+                <Th className="hidden md:table-cell">Address</Th>
                 <Th>Cost</Th>
                 <Th>Status</Th>
-                <Th>Date</Th>
+                <Th className="hidden sm:table-cell">Date</Th>
                 <Th>Actions</Th>
               </Tr>
             </Thead>
@@ -138,19 +138,19 @@ export default function Deliveries() {
                 deliveries?.deliveries?.map((delivery: any) => (
                   <Tr key={delivery.id}>
                     <Td className="font-mono text-xs">{delivery.id.slice(0, 8)}</Td>
-                    <Td>{delivery.product_description.slice(0, 30)}...</Td>
+                    <Td className="hidden sm:table-cell">{delivery.product_description.slice(0, 30)}...</Td>
                     <Td>
                       <div>
                         <p className="font-medium">{delivery.customer_name}</p>
                         <p className="text-xs text-gray-500">{delivery.customer_phone}</p>
                       </div>
                     </Td>
-                    <Td>{delivery.delivery_address}</Td>
+                    <Td className="hidden md:table-cell">{delivery.delivery_address}</Td>
                     <Td className="font-medium">{delivery.delivery_cost.toLocaleString()} FCFA</Td>
                     <Td><StatusBadge status={delivery.status} /></Td>
-                    <Td>{format(new Date(delivery.created_at), 'MMM dd, yyyy HH:mm')}</Td>
+                    <Td className="hidden sm:table-cell">{format(new Date(delivery.created_at), 'MMM dd, yyyy HH:mm')}</Td>
                     <Td>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1">
                         <Button size="sm" variant="ghost" onClick={() => handleView(delivery.id)}>
                           <Eye size={14} />
                         </Button>
@@ -159,7 +159,7 @@ export default function Deliveries() {
                             <UserPlus size={14} />
                           </Button>
                         )}
-                        <Button size="sm" variant="ghost" onClick={handlePrint}>
+                        <Button size="sm" variant="ghost" onClick={handlePrint} className="hidden sm:flex">
                           <Printer size={14} />
                         </Button>
                       </div>

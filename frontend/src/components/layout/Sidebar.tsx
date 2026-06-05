@@ -90,26 +90,26 @@ export default function Sidebar() {
   return (
     <>
       <aside
-        className={`h-full bg-primary-900 text-white transition-all duration-300 overflow-y-auto ${
+        className={`h-full bg-primary-900 text-white transition-all duration-300 overflow-y-auto scrollbar-thin ${
           sidebarOpen ? 'w-64' : 'w-0 lg:w-16'
         }`}
       >
         {/* Logo / Title */}
-        <div className="flex items-center justify-between h-16 px-4 border-b border-primary-700">
+        <div className="flex items-center justify-between h-14 sm:h-16 px-3 sm:px-4 border-b border-primary-700">
           {sidebarOpen && (
-            <h1 className="text-lg md:text-xl font-bold text-white truncate">TrustDelivery</h1>
+            <h1 className="text-base sm:text-lg md:text-xl font-bold text-white truncate">TrustDelivery</h1>
           )}
           {/* Mobile close button */}
           <button
             onClick={toggleSidebar}
-            className="p-2 hover:bg-primary-700 rounded lg:hidden"
+            className="p-1.5 sm:p-2 hover:bg-primary-700 rounded lg:hidden"
           >
-            <X size={20} />
+            <X size={18} className="sm:w-5 sm:h-5" />
           </button>
         </div>
 
         {/* Navigation */}
-        <nav className="mt-4 px-2">
+        <nav className="mt-3 sm:mt-4 px-2">
           <ul className="space-y-1">
             {navItems.map((item) => (
               <li key={item.name}>
@@ -117,11 +117,9 @@ export default function Sidebar() {
                   <div>
                     <button
                       onClick={() => toggleExpand(item.name)}
-                      className={`w-full flex items-center gap-3 px-3 md:px-4 py-2.5 text-sm font-medium rounded-lg transition-colors hover:bg-primary-700 ${
-                        expandedItems.includes(item.name) ? 'bg-primary-700' : ''
-                      }`}
+                      className={`w-full flex items-center gap-2 sm:gap-3 px-3 py-2 sm:py-2.5 text-sm font-medium rounded-lg transition-colors hover:bg-primary-700`}
                     >
-                      {item.icon}
+                      <span className="flex-shrink-0">{item.icon}</span>
                       {sidebarOpen && (
                         <>
                           <span className="flex-1 text-left truncate">{item.name}</span>
@@ -135,14 +133,14 @@ export default function Sidebar() {
                       )}
                     </button>
                     {sidebarOpen && expandedItems.includes(item.name) && (
-                      <ul className="mt-1 ml-3 md:ml-4 pl-3 md:pl-4 border-l border-primary-700 space-y-1">
+                      <ul className="mt-1 ml-3 sm:ml-4 pl-3 sm:pl-4 border-l border-primary-700 space-y-1">
                         {item.children.map((child) => (
                           <li key={child.path}>
                             <NavLink
                               to={child.path}
                               onClick={handleNavClick}
                               className={({ isActive }) =>
-                                `block px-2 md:px-3 py-2 text-sm rounded-lg transition-colors truncate ${
+                                `block px-2 sm:px-3 py-1.5 sm:py-2 text-sm rounded-lg transition-colors truncate ${
                                   isActive
                                     ? 'bg-secondary text-white'
                                     : 'text-gray-300 hover:bg-primary-700'
@@ -161,14 +159,14 @@ export default function Sidebar() {
                     to={item.path}
                     onClick={handleNavClick}
                     className={({ isActive }) =>
-                      `flex items-center gap-3 px-3 md:px-4 py-2.5 text-sm font-medium rounded-lg transition-colors ${
+                      `flex items-center gap-2 sm:gap-3 px-3 py-2 sm:py-2.5 text-sm font-medium rounded-lg transition-colors ${
                         isActive
                           ? 'bg-secondary text-white'
                           : 'text-gray-300 hover:bg-primary-700'
                       }`
                     }
                   >
-                    {item.icon}
+                    <span className="flex-shrink-0">{item.icon}</span>
                     {sidebarOpen && <span className="truncate">{item.name}</span>}
                   </NavLink>
                 )}

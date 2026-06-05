@@ -40,12 +40,14 @@ export default function DeliveryDetails() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" onClick={() => navigate('/deliveries')}>
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+        <Button variant="ghost" onClick={() => navigate('/deliveries')} className="self-start">
           <ArrowLeft size={20} />
         </Button>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Delivery #{delivery.id.slice(0, 8)}</h1>
-        <StatusBadge status={delivery.status} />
+        <div className="flex flex-wrap items-center gap-2">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Delivery #{delivery.id.slice(0, 8)}</h1>
+          <StatusBadge status={delivery.status} />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -55,34 +57,34 @@ export default function DeliveryDetails() {
               <CardTitle>Delivery Information</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
-                  <p className="text-sm text-gray-500">Delivery ID</p>
-                  <p className="font-mono">{delivery.id}</p>
+                  <p className="text-xs sm:text-sm text-gray-500">Delivery ID</p>
+                  <p className="font-mono text-xs sm:text-sm break-all">{delivery.id}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Status</p>
+                  <p className="text-xs sm:text-sm text-gray-500">Status</p>
                   <StatusBadge status={delivery.status} />
                 </div>
-                <div className="col-span-2">
-                  <p className="text-sm text-gray-500">Product Description</p>
-                  <p>{delivery.product_description}</p>
+                <div className="col-span-2 sm:col-span-2">
+                  <p className="text-xs sm:text-sm text-gray-500">Product Description</p>
+                  <p className="text-sm sm:text-base">{delivery.product_description}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Product Value</p>
-                  <p className="font-semibold">{delivery.product_value.toLocaleString()} FCFA</p>
+                  <p className="text-xs sm:text-sm text-gray-500">Product Value</p>
+                  <p className="font-semibold text-sm sm:text-base">{delivery.product_value.toLocaleString()} FCFA</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Delivery Cost</p>
-                  <p className="font-semibold text-secondary">{delivery.delivery_cost.toLocaleString()} FCFA</p>
+                  <p className="text-xs sm:text-sm text-gray-500">Delivery Cost</p>
+                  <p className="font-semibold text-secondary text-sm sm:text-base">{delivery.delivery_cost.toLocaleString()} FCFA</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Distance</p>
-                  <p>{delivery.distance_km.toFixed(2)} km</p>
+                  <p className="text-xs sm:text-sm text-gray-500">Distance</p>
+                  <p className="text-sm sm:text-base">{delivery.distance_km.toFixed(2)} km</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">OTP Code</p>
-                  <p className="font-mono text-lg">{delivery.otp_code}</p>
+                  <p className="text-xs sm:text-sm text-gray-500">OTP Code</p>
+                  <p className="font-mono text-sm sm:text-lg">{delivery.otp_code}</p>
                 </div>
               </div>
             </CardContent>
@@ -96,7 +98,7 @@ export default function DeliveryDetails() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-gray-500">Name</p>
                   <p className="font-medium">{delivery.customer_name}</p>
@@ -108,11 +110,11 @@ export default function DeliveryDetails() {
                     {delivery.customer_phone}
                   </p>
                 </div>
-                <div className="col-span-2">
+                <div className="col-span-1 sm:col-span-2">
                   <p className="text-sm text-gray-500">Delivery Address</p>
-                  <p className="flex items-center gap-2">
-                    <MapPin size={16} className="text-secondary" />
-                    {delivery.delivery_address}
+                  <p className="flex items-start gap-2">
+                    <MapPin size={16} className="text-secondary flex-shrink-0 mt-0.5" />
+                    <span>{delivery.delivery_address}</span>
                   </p>
                 </div>
               </div>

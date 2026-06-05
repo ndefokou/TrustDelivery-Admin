@@ -52,29 +52,29 @@ export default function Dashboard() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
         {dashboard?.kpi_cards?.map((card, index) => (
           <Card key={index} className="p-3 sm:p-4">
             <div className="flex items-center justify-between">
-              <div className="p-2 bg-secondary-50 dark:bg-secondary-900 rounded-lg">
-                <div className="text-secondary">{iconMap[card.icon] || <Package size={24} />}</div>
+              <div className="p-1.5 sm:p-2 bg-secondary-50 dark:bg-secondary-900 rounded-lg">
+                <div className="text-secondary">{iconMap[card.icon] || <Package size={20} className="sm:w-6 sm:h-6" />}</div>
               </div>
               {card.trend && (
-                <div className={`flex items-center gap-1 text-sm ${
+                <div className={`flex items-center gap-0.5 sm:gap-1 text-xs sm:text-sm ${
                   card.trend.direction === 'up' ? 'text-success' : 'text-danger'
                 }`}>
-                  {card.trend.direction === 'up' ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
-                  <span>{card.trend.percentage.toFixed(1)}%</span>
+                  {card.trend.direction === 'up' ? <TrendingUp size={14} className="sm:w-4 sm:h-4" /> : <TrendingDown size={14} className="sm:w-4 sm:h-4" />}
+                  <span className="hidden sm:inline">{card.trend.percentage.toFixed(1)}%</span>
                 </div>
               )}
             </div>
-            <div className="mt-3">
-              <p className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">
+            <div className="mt-2 sm:mt-3">
+              <p className="text-base sm:text-lg md:text-2xl font-bold text-gray-900 dark:text-white truncate">
                 {card.title.includes('Revenue') || card.title.includes('FCFA')
                   ? `${card.value.toLocaleString()} FCFA`
                   : card.value.toLocaleString()}
               </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{card.title}</p>
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-0.5 sm:mt-1 truncate">{card.title}</p>
             </div>
           </Card>
         ))}

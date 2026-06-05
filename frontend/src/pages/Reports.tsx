@@ -40,14 +40,15 @@ export default function Reports() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Reports</h1>
-        <div className="flex gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Reports</h1>
+        <div className="flex flex-wrap gap-2">
           {tabs.map((tab) => (
             <Button
               key={tab.id}
               variant={activeTab === tab.id ? 'primary' : 'secondary'}
               onClick={() => setActiveTab(tab.id)}
+              size="sm"
             >
               <tab.icon size={16} />
               {tab.label}
@@ -56,48 +57,48 @@ export default function Reports() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-secondary-50 dark:bg-secondary-900 rounded-lg">
-              <Package className="text-secondary" size={24} />
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+        <Card className="p-3 sm:p-4">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="p-1.5 sm:p-2 bg-secondary-50 dark:bg-secondary-900 rounded-lg">
+              <Package className="text-secondary" size={20} />
             </div>
             <div>
-              <p className="text-2xl font-bold">{mockDailyData.reduce((acc, d) => acc + d.created, 0)}</p>
-              <p className="text-sm text-gray-500">Total Created</p>
+              <p className="text-lg sm:text-2xl font-bold">{mockDailyData.reduce((acc, d) => acc + d.created, 0)}</p>
+              <p className="text-xs sm:text-sm text-gray-500">Total Created</p>
             </div>
           </div>
         </Card>
-        <Card className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-success-50 dark:bg-success-900 rounded-lg">
-              <TrendingUp className="text-success" size={24} />
+        <Card className="p-3 sm:p-4">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="p-1.5 sm:p-2 bg-success-50 dark:bg-success-900 rounded-lg">
+              <TrendingUp className="text-success" size={20} />
             </div>
             <div>
-              <p className="text-2xl font-bold">{mockDailyData.reduce((acc, d) => acc + d.completed, 0)}</p>
-              <p className="text-sm text-gray-500">Completed</p>
+              <p className="text-lg sm:text-2xl font-bold">{mockDailyData.reduce((acc, d) => acc + d.completed, 0)}</p>
+              <p className="text-xs sm:text-sm text-gray-500">Completed</p>
             </div>
           </div>
         </Card>
-        <Card className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-danger-50 dark:bg-danger-900 rounded-lg">
-              <XCircle className="text-danger" size={24} />
+        <Card className="p-3 sm:p-4">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="p-1.5 sm:p-2 bg-danger-50 dark:bg-danger-900 rounded-lg">
+              <XCircle className="text-danger" size={20} />
             </div>
             <div>
-              <p className="text-2xl font-bold">{mockDailyData.reduce((acc, d) => acc + d.failed, 0)}</p>
-              <p className="text-sm text-gray-500">Failed</p>
+              <p className="text-lg sm:text-2xl font-bold">{mockDailyData.reduce((acc, d) => acc + d.failed, 0)}</p>
+              <p className="text-xs sm:text-sm text-gray-500">Failed</p>
             </div>
           </div>
         </Card>
-        <Card className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-warning-50 dark:bg-warning-900 rounded-lg">
-              <DollarSign className="text-warning" size={24} />
+        <Card className="p-3 sm:p-4">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="p-1.5 sm:p-2 bg-warning-50 dark:bg-warning-900 rounded-lg">
+              <DollarSign className="text-warning" size={20} />
             </div>
             <div>
-              <p className="text-2xl font-bold">{(mockDailyData.reduce((acc, d) => acc + d.revenue, 0) / 1000).toFixed(0)}K</p>
-              <p className="text-sm text-gray-500">Revenue (FCFA)</p>
+              <p className="text-lg sm:text-2xl font-bold">{(mockDailyData.reduce((acc, d) => acc + d.revenue, 0) / 1000).toFixed(0)}K</p>
+              <p className="text-xs sm:text-sm text-gray-500">Revenue (FCFA)</p>
             </div>
           </div>
         </Card>
@@ -178,15 +179,15 @@ export default function Reports() {
                 <Tr>
                   <Th>Reason</Th>
                   <Th className="text-right">Count</Th>
-                  <Th className="text-right">Percentage</Th>
+                  <Th className="text-right hidden sm:table-cell">Percentage</Th>
                 </Tr>
               </Thead>
               <Tbody>
                 {mockFailedReasons.map((item) => (
                   <Tr key={item.reason}>
-                    <Td>{item.reason}</Td>
+                    <Td className="truncate max-w-[150px] sm:max-w-none">{item.reason}</Td>
                     <Td className="text-right font-medium">{item.count}</Td>
-                    <Td className="text-right">
+                    <Td className="text-right hidden sm:table-cell">
                       <span className="text-sm bg-gray-100 dark:bg-primary-700 px-2 py-1 rounded">
                         {item.percentage}%
                       </span>

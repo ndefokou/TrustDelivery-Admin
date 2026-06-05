@@ -3,7 +3,7 @@ import clsx from 'clsx'
 interface BadgeProps {
   children: React.ReactNode
   variant?: 'default' | 'primary' | 'success' | 'warning' | 'danger' | 'info'
-  size?: 'sm' | 'md'
+  size?: 'xs' | 'sm' | 'md'
 }
 
 export function Badge({ children, variant = 'default', size = 'md' }: BadgeProps) {
@@ -17,6 +17,7 @@ export function Badge({ children, variant = 'default', size = 'md' }: BadgeProps
   }
   
   const sizes = {
+    xs: 'px-1.5 py-0.5 text-xs',
     sm: 'px-2 py-0.5 text-xs',
     md: 'px-2.5 py-1 text-sm',
   }
@@ -24,7 +25,7 @@ export function Badge({ children, variant = 'default', size = 'md' }: BadgeProps
   return (
     <span
       className={clsx(
-        'inline-flex items-center font-medium rounded-full',
+        'inline-flex items-center font-medium rounded-full whitespace-nowrap',
         variants[variant],
         sizes[size]
       )}
