@@ -1,19 +1,48 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useMerchants } from '../hooks/useApi'
+import { useMerchants, useUpdateMerchant, useSuspendMerchant } from '../hooks/useApi'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { Input, Select } from '../components/ui/Input'
 import { Table, Thead, Tbody, Tr, Th, Td } from '../components/ui/Table'
 import { StatusBadge } from '../components/ui/Badge'
+import { Modal } from '../components/ui/Modal'
 import { Search, Eye, Edit, Ban, Store, Package, DollarSign } from 'lucide-react'
 import { format } from 'date-fns'
 
 export default function Merchants() {
   const navigate = useNavigate()
   const [filters, setFilters] = useState({ status: '', search: '' })
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [editingMerchant, setEditingMerchant] = useState<any>(null)
+  const [error, setError] = useState<string | null>(null)
 
   const { data: merchants, isLoading } = useMerchants(filters)
+  const updateMerchant = useUpdateMerchant()
+  const suspendMerchant = useSuspendMerchant()
+
+  const handleUpdateMerchant = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingMerchant) return
+    try {
+      await updateMerchant.mutateAsync({
+        id: editingMerchant.id,
+        merchant: {
+          business_name: editingMerchant.business_name,
+          owner_name: editingMerchant.owner_name,
+          email: editingMerchant.email,
+          phone_number: editingMerchant.phone_number,
+          address: editingMerchant.address,
+        },
+      })
+      setShowEditModal(false)
+      setEditingMerchant(null)
+      setError(null)
+    } catch (err: any) {
+      const message = err?.response?.data?.error || 'Failed to update merchant'
+      setError(message)
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -144,11 +173,11 @@ export default function Merchants() {
                         <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); navigate(`/merchants/${merchant.id}`) }}>
                           <Eye size={14} />
                         </Button>
-                        <Button size="sm" variant="ghost" onClick={(e) => e.stopPropagation()} className="hidden sm:flex">
+                        <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); setEditingMerchant(merchant); setShowEditModal(true) }} className="hidden sm:flex">
                           <Edit size={14} />
                         </Button>
                         {merchant.status !== 'suspended' && (
-                          <Button size="sm" variant="ghost" className="text-danger" onClick={(e) => e.stopPropagation()}>
+                          <Button size="sm" variant="ghost" className="text-danger" onClick={(e) => { e.stopPropagation(); suspendMerchant.mutate(merchant.id) }} disabled={suspendMerchant.isPending}>
                             <Ban size={14} />
                           </Button>
                         )}
@@ -161,6 +190,60 @@ export default function Merchants() {
           </Table>
         </CardContent>
       </Card>
+
+      <Modal isOpen={showEditModal} onClose={() => { setShowEditModal(false); setEditingMerchant(null); setError(null) }} title="Edit Merchant" size="lg">
+        {editingMerchant && (
+          <form onSubmit={handleUpdateMerchant} className="space-y-4">
+            {error && (
+              <div className="p-3 bg-red-100 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-md text-red-700 dark:text-red-400 text-sm">
+                {error}
+              </div>
+            )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Input
+                label="Business Name"
+                value={editingMerchant.business_name}
+                onChange={(e) => setEditingMerchant({ ...editingMerchant, business_name: e.target.value })}
+                required
+              />
+              <Input
+                label="Owner Name"
+                value={editingMerchant.owner_name}
+                onChange={(e) => setEditingMerchant({ ...editingMerchant, owner_name: e.target.value })}
+                required
+              />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Input
+                label="Email"
+                type="email"
+                value={editingMerchant.email}
+                onChange={(e) => setEditingMerchant({ ...editingMerchant, email: e.target.value })}
+                required
+              />
+              <Input
+                label="Phone Number"
+                type="tel"
+                value={editingMerchant.phone_number}
+                onChange={(e) => setEditingMerchant({ ...editingMerchant, phone_number: e.target.value })}
+                required
+              />
+            </div>
+            <Input
+              label="Address"
+              value={editingMerchant.address}
+              onChange={(e) => setEditingMerchant({ ...editingMerchant, address: e.target.value })}
+              required
+            />
+            <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end">
+              <Button type="button" variant="secondary" onClick={() => setShowEditModal(false)} className="w-full sm:w-auto">Cancel</Button>
+              <Button type="submit" disabled={updateMerchant.isPending} className="w-full sm:w-auto">
+                {updateMerchant.isPending ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </div>
+          </form>
+        )}
+      </Modal>
     </div>
   )
 }

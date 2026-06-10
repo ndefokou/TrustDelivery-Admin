@@ -1,15 +1,58 @@
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useMerchant } from '../hooks/useApi'
+import { useMerchant, useSuspendMerchant, useActivateMerchant, useUpdateMerchant } from '../hooks/useApi'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
+import { Input } from '../components/ui/Input'
 import { StatusBadge } from '../components/ui/Badge'
 import { Table, Thead, Tbody, Tr, Th, Td } from '../components/ui/Table'
+import { Modal } from '../components/ui/Modal'
 import { ArrowLeft, Store, Mail, Phone, MapPin, Package, DollarSign, TrendingUp } from 'lucide-react'
+import { AxiosError } from 'axios'
 
 export default function MerchantDetails() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { data: merchant, isLoading } = useMerchant(id!)
+  const suspendMerchant = useSuspendMerchant()
+  const activateMerchant = useActivateMerchant()
+  const updateMerchant = useUpdateMerchant()
+
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [editError, setEditError] = useState<string | null>(null)
+  const [editForm, setEditForm] = useState({
+    business_name: '',
+    owner_name: '',
+    email: '',
+    phone_number: '',
+    address: '',
+  })
+
+  useEffect(() => {
+    if (merchant) {
+      setEditForm({
+        business_name: merchant.business_name,
+        owner_name: merchant.owner_name,
+        email: merchant.email,
+        phone_number: merchant.phone_number,
+        address: merchant.address,
+      })
+    }
+  }, [merchant])
+
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!id) return
+    try {
+      await updateMerchant.mutateAsync({ id, merchant: editForm })
+      setShowEditModal(false)
+      setEditError(null)
+    } catch (err) {
+      const axiosError = err as AxiosError<{ error: string }>
+      const message = axiosError.response?.data?.error || 'Failed to update merchant'
+      setEditError(message)
+    }
+  }
 
   if (isLoading) {
     return (
@@ -147,16 +190,74 @@ export default function MerchantDetails() {
             </CardHeader>
             <CardContent className="space-y-2">
               {merchant.status === 'suspended' ? (
-                <Button className="w-full" variant="success">Activate Merchant</Button>
+                <Button className="w-full" variant="success" onClick={() => activateMerchant.mutate(merchant.id)} disabled={activateMerchant.isPending}>
+                  {activateMerchant.isPending ? 'Activating...' : 'Activate Merchant'}
+                </Button>
               ) : (
-                <Button className="w-full" variant="danger">Suspend Merchant</Button>
+                <Button className="w-full" variant="danger" onClick={() => suspendMerchant.mutate(merchant.id)} disabled={suspendMerchant.isPending}>
+                  {suspendMerchant.isPending ? 'Suspending...' : 'Suspend Merchant'}
+                </Button>
               )}
-              <Button className="w-full" variant="secondary">Edit Profile</Button>
-              <Button className="w-full" variant="secondary">View Payment History</Button>
+              <Button className="w-full" variant="secondary" onClick={() => setShowEditModal(true)}>Edit Profile</Button>
+              <Button className="w-full" variant="secondary" onClick={() => navigate('/payments')}>View Payment History</Button>
             </CardContent>
           </Card>
         </div>
       </div>
+
+      <Modal isOpen={showEditModal} onClose={() => { setShowEditModal(false); setEditError(null) }} title="Edit Merchant Profile" size="lg">
+        {merchant && (
+          <form onSubmit={handleUpdate} className="space-y-4">
+            {editError && (
+              <div className="p-3 bg-red-100 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-md text-red-700 dark:text-red-400 text-sm">
+                {editError}
+              </div>
+            )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Input
+                label="Business Name"
+                value={editForm.business_name}
+                onChange={(e) => setEditForm({ ...editForm, business_name: e.target.value })}
+                required
+              />
+              <Input
+                label="Owner Name"
+                value={editForm.owner_name}
+                onChange={(e) => setEditForm({ ...editForm, owner_name: e.target.value })}
+                required
+              />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Input
+                label="Email"
+                type="email"
+                value={editForm.email}
+                onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                required
+              />
+              <Input
+                label="Phone Number"
+                type="tel"
+                value={editForm.phone_number}
+                onChange={(e) => setEditForm({ ...editForm, phone_number: e.target.value })}
+                required
+              />
+            </div>
+            <Input
+              label="Address"
+              value={editForm.address}
+              onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
+              required
+            />
+            <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end">
+              <Button type="button" variant="secondary" onClick={() => setShowEditModal(false)} className="w-full sm:w-auto">Cancel</Button>
+              <Button type="submit" disabled={updateMerchant.isPending} className="w-full sm:w-auto">
+                {updateMerchant.isPending ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </div>
+          </form>
+        )}
+      </Modal>
     </div>
   )
 }

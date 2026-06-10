@@ -123,6 +123,27 @@ pub async fn suspend_merchant(
     }
 }
 
+pub async fn activate_merchant(
+    state: web::Data<AppState>,
+    path: web::Path<uuid::Uuid>,
+) -> Result<HttpResponse, Error> {
+    let id = path.into_inner();
+    
+    let merchant = sqlx::query_as::<_, Merchant>(
+        "UPDATE merchants SET status = 'active'::merchant_status, updated_at = NOW() WHERE id = $1 RETURNING id, business_name, owner_name, email, phone_number, address, status, total_deliveries, total_revenue, active_deliveries, created_at, updated_at",
+    )
+    .bind(id)
+    .fetch_one(state.db.as_ref())
+    .await;
+
+    match merchant {
+        Ok(m) => Ok(HttpResponse::Ok().json(m)),
+        _ => Ok(HttpResponse::NotFound().json(serde_json::json!({
+            "error": "Merchant not found"
+        }))),
+    }
+}
+
 pub fn routes() -> actix_web::Scope {
     web::scope("/api/merchants")
         .route("", web::get().to(list_merchants))
@@ -130,4 +151,5 @@ pub fn routes() -> actix_web::Scope {
         .route("/{id}", web::get().to(get_merchant))
         .route("/{id}", web::put().to(update_merchant))
         .route("/{id}/suspend", web::post().to(suspend_merchant))
+        .route("/{id}/activate", web::post().to(activate_merchant))
 }

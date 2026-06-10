@@ -83,6 +83,7 @@ pub struct CreateRiderRequest {
     pub national_id: String,
     pub address: String,
     pub motorbike_registration: String,
+    #[serde(default)]
     pub profile_photo: Option<String>,
 }
 

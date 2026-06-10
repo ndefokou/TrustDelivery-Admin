@@ -117,7 +117,9 @@ export default function Sidebar() {
                   <div>
                     <button
                       onClick={() => toggleExpand(item.name)}
-                      className={`w-full flex items-center gap-2 sm:gap-3 px-3 py-2 sm:py-2.5 text-sm font-medium rounded-lg transition-colors hover:bg-primary-700`}
+                      className={`w-full flex items-center gap-2 sm:gap-3 px-3 py-2 sm:py-2.5 text-sm font-medium rounded-lg transition-colors hover:bg-primary-700 ${
+                        expandedItems.includes(item.name) ? 'bg-primary-700' : ''
+                      }`}
                     >
                       <span className="flex-shrink-0">{item.icon}</span>
                       {sidebarOpen && (

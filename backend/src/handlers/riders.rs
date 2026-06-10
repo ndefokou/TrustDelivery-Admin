@@ -11,7 +11,7 @@ pub async fn list_riders(
     let per_page: i64 = 20;
     
     let riders = sqlx::query_as::<_, Rider>(
-        "SELECT id, full_name, phone_number, national_id, address, motorbike_registration, profile_photo, status, current_lat, current_lng, total_deliveries, completed_deliveries, failed_deliveries, performance_score, total_revenue, created_at, updated_at FROM riders ORDER BY created_at DESC LIMIT $1 OFFSET $2",
+        "SELECT id, full_name, phone_number, national_id, address, motorbike_registration, profile_photo, status, current_lat::float8, current_lng::float8, total_deliveries, completed_deliveries, failed_deliveries, performance_score::float8, total_revenue::float8, created_at, updated_at FROM riders ORDER BY created_at DESC LIMIT $1 OFFSET $2",
     )
     .bind(per_page)
     .bind((page - 1) * per_page)
@@ -39,7 +39,7 @@ pub async fn get_rider(
     let id = path.into_inner();
     
     let rider = sqlx::query_as::<_, Rider>(
-        "SELECT id, full_name, phone_number, national_id, address, motorbike_registration, profile_photo, status, current_lat, current_lng, total_deliveries, completed_deliveries, failed_deliveries, performance_score, total_revenue, created_at, updated_at FROM riders WHERE id = $1",
+        "SELECT id, full_name, phone_number, national_id, address, motorbike_registration, profile_photo, status, current_lat::float8, current_lng::float8, total_deliveries, completed_deliveries, failed_deliveries, performance_score::float8, total_revenue::float8, created_at, updated_at FROM riders WHERE id = $1",
     )
     .bind(id)
     .fetch_optional(state.db.as_ref())
@@ -58,7 +58,7 @@ pub async fn create_rider(
     req: web::Json<CreateRiderRequest>,
 ) -> Result<HttpResponse, Error> {
     let rider = sqlx::query_as::<_, Rider>(
-        "INSERT INTO riders (full_name, phone_number, national_id, address, motorbike_registration, profile_photo, status, total_deliveries, completed_deliveries, failed_deliveries, performance_score, total_revenue, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, 'active'::rider_status, 0, 0, 0, 0.0, 0.0, NOW(), NOW()) RETURNING id, full_name, phone_number, national_id, address, motorbike_registration, profile_photo, status, current_lat, current_lng, total_deliveries, completed_deliveries, failed_deliveries, performance_score, total_revenue, created_at, updated_at",
+        "INSERT INTO riders (full_name, phone_number, national_id, address, motorbike_registration, profile_photo, status, total_deliveries, completed_deliveries, failed_deliveries, performance_score, total_revenue, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, 'active'::rider_status, 0, 0, 0, 0.0, 0.0, NOW(), NOW()) RETURNING id, full_name, phone_number, national_id, address, motorbike_registration, profile_photo, status, current_lat::float8, current_lng::float8, total_deliveries, completed_deliveries, failed_deliveries, performance_score::float8, total_revenue::float8, created_at, updated_at",
     )
     .bind(&req.full_name)
     .bind(&req.phone_number)
@@ -71,9 +71,22 @@ pub async fn create_rider(
 
     match rider {
         Ok(r) => Ok(HttpResponse::Created().json(r)),
-        _ => Ok(HttpResponse::BadRequest().json(serde_json::json!({
-            "error": "Failed to create rider"
-        }))),
+        Err(e) => {
+            log::error!("Failed to create rider: {}", e);
+            let error_msg = e.to_string();
+            let user_message = if error_msg.contains("riders_phone_number_key") {
+                "A rider with this phone number already exists"
+            } else if error_msg.contains("riders_national_id_key") {
+                "A rider with this national ID already exists"
+            } else if error_msg.contains("riders_motorbike_registration_key") {
+                "A rider with this motorbike registration already exists"
+            } else {
+                "Failed to create rider"
+            };
+            Ok(HttpResponse::BadRequest().json(serde_json::json!({
+                "error": user_message
+            })))
+        }
     }
 }
 
@@ -85,7 +98,7 @@ pub async fn update_rider(
     let id = path.into_inner();
     
     let rider = sqlx::query_as::<_, Rider>(
-        "UPDATE riders SET full_name = COALESCE($1, full_name), phone_number = COALESCE($2, phone_number), address = COALESCE($3, address), profile_photo = COALESCE($4, profile_photo), updated_at = NOW() WHERE id = $5 RETURNING id, full_name, phone_number, national_id, address, motorbike_registration, profile_photo, status, current_lat, current_lng, total_deliveries, completed_deliveries, failed_deliveries, performance_score, total_revenue, created_at, updated_at",
+        "UPDATE riders SET full_name = COALESCE($1, full_name), phone_number = COALESCE($2, phone_number), address = COALESCE($3, address), profile_photo = COALESCE($4, profile_photo), updated_at = NOW() WHERE id = $5 RETURNING id, full_name, phone_number, national_id, address, motorbike_registration, profile_photo, status, current_lat::float8, current_lng::float8, total_deliveries, completed_deliveries, failed_deliveries, performance_score::float8, total_revenue::float8, created_at, updated_at",
     )
     .bind(&req.full_name)
     .bind(&req.phone_number)
@@ -110,7 +123,7 @@ pub async fn suspend_rider(
     let id = path.into_inner();
     
     let rider = sqlx::query_as::<_, Rider>(
-        "UPDATE riders SET status = 'suspended'::rider_status, updated_at = NOW() WHERE id = $1 RETURNING id, full_name, phone_number, national_id, address, motorbike_registration, profile_photo, status, current_lat, current_lng, total_deliveries, completed_deliveries, failed_deliveries, performance_score, total_revenue, created_at, updated_at",
+        "UPDATE riders SET status = 'suspended'::rider_status, updated_at = NOW() WHERE id = $1 RETURNING id, full_name, phone_number, national_id, address, motorbike_registration, profile_photo, status, current_lat::float8, current_lng::float8, total_deliveries, completed_deliveries, failed_deliveries, performance_score::float8, total_revenue::float8, created_at, updated_at",
     )
     .bind(id)
     .fetch_one(state.db.as_ref())
@@ -131,7 +144,7 @@ pub async fn activate_rider(
     let id = path.into_inner();
     
     let rider = sqlx::query_as::<_, Rider>(
-        "UPDATE riders SET status = 'active'::rider_status, updated_at = NOW() WHERE id = $1 RETURNING id, full_name, phone_number, national_id, address, motorbike_registration, profile_photo, status, current_lat, current_lng, total_deliveries, completed_deliveries, failed_deliveries, performance_score, total_revenue, created_at, updated_at",
+        "UPDATE riders SET status = 'active'::rider_status, updated_at = NOW() WHERE id = $1 RETURNING id, full_name, phone_number, national_id, address, motorbike_registration, profile_photo, status, current_lat::float8, current_lng::float8, total_deliveries, completed_deliveries, failed_deliveries, performance_score::float8, total_revenue::float8, created_at, updated_at",
     )
     .bind(id)
     .fetch_one(state.db.as_ref())

@@ -9,7 +9,7 @@ pub struct RiderService;
 impl RiderService {
     pub async fn get_active_riders(pool: &PgPool) -> Result<Vec<Rider>, sqlx::Error> {
         let riders = sqlx::query_as::<_, Rider>(
-            "SELECT id, full_name, phone_number, national_id, address, motorbike_registration, profile_photo, status, current_lat, current_lng, total_deliveries, completed_deliveries, failed_deliveries, performance_score, total_revenue, created_at, updated_at FROM riders WHERE status = 'active' ORDER BY performance_score DESC"
+            "SELECT id, full_name, phone_number, national_id, address, motorbike_registration, profile_photo, status, current_lat::float8, current_lng::float8, total_deliveries, completed_deliveries, failed_deliveries, performance_score::float8, total_revenue::float8, created_at, updated_at FROM riders WHERE status = 'active' ORDER BY performance_score DESC"
         )
         .fetch_all(pool)
         .await;

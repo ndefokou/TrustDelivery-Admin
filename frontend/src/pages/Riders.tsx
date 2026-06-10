@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useRiders, useCreateRider } from '../hooks/useApi'
+import { useRiders, useCreateRider, useUpdateRider, useSuspendRider, useActivateRider } from '../hooks/useApi'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { FloatingActionButton } from '../components/ui/FloatingActionButton'
@@ -9,11 +9,14 @@ import { Table, Thead, Tbody, Tr, Th, Td } from '../components/ui/Table'
 import { StatusBadge } from '../components/ui/Badge'
 import { Modal } from '../components/ui/Modal'
 import { Plus, Search, Eye, Edit, Ban, CheckCircle } from 'lucide-react'
+import { AxiosError } from 'axios'
 
 export default function Riders() {
   const navigate = useNavigate()
   const [filters, setFilters] = useState({ status: '', search: '' })
   const [showAddModal, setShowAddModal] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [newRider, setNewRider] = useState({
     full_name: '',
     phone_number: '',
@@ -21,9 +24,13 @@ export default function Riders() {
     address: '',
     motorbike_registration: '',
   })
+  const [editingRider, setEditingRider] = useState<any>(null)
 
   const { data: riders, isLoading } = useRiders(filters)
   const createRider = useCreateRider()
+  const updateRider = useUpdateRider()
+  const suspendRider = useSuspendRider()
+  const activateRider = useActivateRider()
 
   const handleCreateRider = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -31,8 +38,33 @@ export default function Riders() {
       await createRider.mutateAsync(newRider)
       setShowAddModal(false)
       setNewRider({ full_name: '', phone_number: '', national_id: '', address: '', motorbike_registration: '' })
-    } catch (error) {
-      console.error('Failed to create rider:', error)
+      setError(null)
+    } catch (err) {
+      const axiosError = err as AxiosError<{ error: string }>
+      const message = axiosError.response?.data?.error || 'Failed to create rider'
+      setError(message)
+    }
+  }
+
+  const handleUpdateRider = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingRider) return
+    try {
+      await updateRider.mutateAsync({
+        id: editingRider.id,
+        rider: {
+          full_name: editingRider.full_name,
+          phone_number: editingRider.phone_number,
+          address: editingRider.address,
+        },
+      })
+      setShowEditModal(false)
+      setEditingRider(null)
+      setError(null)
+    } catch (err) {
+      const axiosError = err as AxiosError<{ error: string }>
+      const message = axiosError.response?.data?.error || 'Failed to update rider'
+      setError(message)
     }
   }
 
@@ -144,15 +176,15 @@ export default function Riders() {
                         <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); navigate(`/riders/${rider.id}`) }}>
                           <Eye size={14} />
                         </Button>
-                        <Button size="sm" variant="ghost" onClick={(e) => e.stopPropagation()} className="hidden sm:flex">
+                        <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); setEditingRider(rider); setShowEditModal(true) }} className="hidden sm:flex">
                           <Edit size={14} />
                         </Button>
                         {rider.status === 'suspended' ? (
-                          <Button size="sm" variant="success" onClick={(e) => e.stopPropagation()}>
+                          <Button size="sm" variant="success" onClick={(e) => { e.stopPropagation(); activateRider.mutate(rider.id) }} disabled={activateRider.isPending}>
                             <CheckCircle size={14} />
                           </Button>
                         ) : (
-                          <Button size="sm" variant="ghost" className="text-danger" onClick={(e) => e.stopPropagation()}>
+                          <Button size="sm" variant="ghost" className="text-danger" onClick={(e) => { e.stopPropagation(); suspendRider.mutate(rider.id) }} disabled={suspendRider.isPending}>
                             <Ban size={14} />
                           </Button>
                         )}
@@ -166,8 +198,13 @@ export default function Riders() {
         </CardContent>
       </Card>
 
-      <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)} title="Add New Rider" size="lg">
+      <Modal isOpen={showAddModal} onClose={() => { setShowAddModal(false); setError(null) }} title="Add New Rider" size="lg">
         <form onSubmit={handleCreateRider} className="space-y-4">
+          {error && (
+            <div className="p-3 bg-red-100 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-md text-red-700 dark:text-red-400 text-sm">
+              {error}
+            </div>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Full Name"
@@ -210,6 +247,45 @@ export default function Riders() {
             </Button>
           </div>
         </form>
+      </Modal>
+
+      <Modal isOpen={showEditModal} onClose={() => { setShowEditModal(false); setEditingRider(null); setError(null) }} title="Edit Rider" size="lg">
+        {editingRider && (
+          <form onSubmit={handleUpdateRider} className="space-y-4">
+            {error && (
+              <div className="p-3 bg-red-100 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-md text-red-700 dark:text-red-400 text-sm">
+                {error}
+              </div>
+            )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Input
+                label="Full Name"
+                value={editingRider.full_name}
+                onChange={(e) => setEditingRider({ ...editingRider, full_name: e.target.value })}
+                required
+              />
+              <Input
+                label="Phone Number"
+                type="tel"
+                value={editingRider.phone_number}
+                onChange={(e) => setEditingRider({ ...editingRider, phone_number: e.target.value })}
+                required
+              />
+            </div>
+            <Input
+              label="Address"
+              value={editingRider.address}
+              onChange={(e) => setEditingRider({ ...editingRider, address: e.target.value })}
+              required
+            />
+            <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end">
+              <Button type="button" variant="secondary" onClick={() => setShowEditModal(false)} className="w-full sm:w-auto">Cancel</Button>
+              <Button type="submit" disabled={updateRider.isPending} className="w-full sm:w-auto">
+                {updateRider.isPending ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </div>
+          </form>
+        )}
       </Modal>
     </div>
   )

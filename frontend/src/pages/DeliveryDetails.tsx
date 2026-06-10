@@ -1,8 +1,11 @@
+import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useDelivery } from '../hooks/useApi'
+import { useDelivery, useRiders, useAssignRider, useCancelDelivery } from '../hooks/useApi'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
+import { Select } from '../components/ui/Input'
 import { StatusBadge } from '../components/ui/Badge'
+import { Modal } from '../components/ui/Modal'
 import { ArrowLeft, MapPin, Phone, User, Package, CheckCircle, Clock } from 'lucide-react'
 import { format } from 'date-fns'
 
@@ -10,6 +13,35 @@ export default function DeliveryDetails() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { data: delivery, isLoading } = useDelivery(id!)
+  const { data: riders } = useRiders()
+  const assignRider = useAssignRider()
+  const cancelDelivery = useCancelDelivery()
+
+  const [showAssignModal, setShowAssignModal] = useState(false)
+  const [selectedRider, setSelectedRider] = useState('')
+
+  const handleAssign = async () => {
+    if (!id || !selectedRider) return
+    try {
+      await assignRider.mutateAsync({ deliveryId: id, riderId: selectedRider })
+      setShowAssignModal(false)
+      setSelectedRider('')
+    } catch (error) {
+      console.error('Failed to assign rider:', error)
+    }
+  }
+
+  const handleCancel = async () => {
+    if (!id) return
+    if (!confirm('Are you sure you want to cancel this delivery?')) return
+    try {
+      await cancelDelivery.mutateAsync(id)
+      navigate('/deliveries')
+    } catch (error) {
+      console.error('Failed to cancel delivery:', error)
+      alert('Failed to cancel delivery')
+    }
+  }
 
   if (isLoading) {
     return (
@@ -198,17 +230,51 @@ export default function DeliveryDetails() {
             </CardHeader>
             <CardContent className="space-y-2">
               {delivery.status === 'awaiting_assignment' && (
-                <Button className="w-full">Assign Rider</Button>
+                <Button className="w-full" onClick={() => setShowAssignModal(true)}>Assign Rider</Button>
               )}
               {delivery.status === 'in_transit' && (
-                <Button className="w-full" variant="success">Mark as Delivered</Button>
+                <Button className="w-full" variant="success" onClick={() => alert('Deliveries can only be marked as delivered by the assigned rider via the mobile app.')}>
+                  Mark as Delivered
+                </Button>
               )}
-              <Button className="w-full" variant="secondary">Print Receipt</Button>
-              <Button className="w-full" variant="danger" disabled={delivery.status === 'delivered'}>Cancel Delivery</Button>
+              <Button className="w-full" variant="secondary" onClick={() => window.print()}>Print Receipt</Button>
+              <Button className="w-full" variant="danger" disabled={delivery.status === 'delivered' || cancelDelivery.isPending} onClick={handleCancel}>
+                {cancelDelivery.isPending ? 'Cancelling...' : 'Cancel Delivery'}
+              </Button>
             </CardContent>
           </Card>
         </div>
       </div>
+
+      <Modal
+        isOpen={showAssignModal}
+        onClose={() => { setShowAssignModal(false); setSelectedRider('') }}
+        title="Assign Rider"
+      >
+        <div className="space-y-4">
+          <p className="text-gray-600 dark:text-gray-400">
+            Select a rider to assign to this delivery.
+          </p>
+          <Select
+            label="Select Rider"
+            value={selectedRider}
+            onChange={(e) => setSelectedRider(e.target.value)}
+          >
+            <option value="">Choose a rider...</option>
+            {riders?.riders?.filter((r: any) => r.status === 'active').map((rider: any) => (
+              <option key={rider.id} value={rider.id}>
+                {rider.full_name} - {rider.completed_deliveries} completed
+              </option>
+            ))}
+          </Select>
+          <div className="flex gap-2 justify-end">
+            <Button variant="secondary" onClick={() => setShowAssignModal(false)}>Cancel</Button>
+            <Button onClick={handleAssign} disabled={!selectedRider || assignRider.isPending}>
+              {assignRider.isPending ? 'Assigning...' : 'Assign Rider'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

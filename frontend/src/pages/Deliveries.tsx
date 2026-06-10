@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useDeliveries } from '../hooks/useApi'
+import { useDeliveries, useRiders, useAssignRider } from '../hooks/useApi'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { Input, Select } from '../components/ui/Input'
@@ -22,15 +22,32 @@ export default function Deliveries() {
   })
   const [showFilters, setShowFilters] = useState(false)
   const [showAssignModal, setShowAssignModal] = useState(false)
+  const [selectedDelivery, setSelectedDelivery] = useState<string | null>(null)
+  const [selectedRider, setSelectedRider] = useState('')
 
   const { data: deliveries, isLoading } = useDeliveries(filters)
+  const { data: riders } = useRiders()
+  const assignRider = useAssignRider()
 
   const handleView = (id: string) => {
     navigate(`/deliveries/${id}`)
   }
 
-  const handleAssign = () => {
+  const handleAssign = (deliveryId: string) => {
+    setSelectedDelivery(deliveryId)
     setShowAssignModal(true)
+  }
+
+  const handleConfirmAssign = async () => {
+    if (!selectedDelivery || !selectedRider) return
+    try {
+      await assignRider.mutateAsync({ deliveryId: selectedDelivery, riderId: selectedRider })
+      setShowAssignModal(false)
+      setSelectedRider('')
+      setSelectedDelivery(null)
+    } catch (error) {
+      console.error('Failed to assign rider:', error)
+    }
   }
 
   const handlePrint = () => {
@@ -155,7 +172,7 @@ export default function Deliveries() {
                           <Eye size={14} />
                         </Button>
                         {delivery.status === 'awaiting_assignment' && (
-                          <Button size="sm" variant="primary" onClick={handleAssign}>
+                          <Button size="sm" variant="primary" onClick={() => handleAssign(delivery.id)}>
                             <UserPlus size={14} />
                           </Button>
                         )}
@@ -186,22 +203,30 @@ export default function Deliveries() {
 
       <Modal
         isOpen={showAssignModal}
-        onClose={() => setShowAssignModal(false)}
+        onClose={() => { setShowAssignModal(false); setSelectedRider(''); setSelectedDelivery(null) }}
         title="Assign Rider"
       >
         <div className="space-y-4">
           <p className="text-gray-600 dark:text-gray-400">
             Select a rider to assign to this delivery.
           </p>
-          <Select label="Select Rider">
+          <Select
+            label="Select Rider"
+            value={selectedRider}
+            onChange={(e) => setSelectedRider(e.target.value)}
+          >
             <option value="">Choose a rider...</option>
-            <option value="rider-1">Jean-Baptiste Mba</option>
-            <option value="rider-2">Pierre Nkongo</option>
-            <option value="rider-3">Marie Atangana</option>
+            {riders?.riders?.filter((r: any) => r.status === 'active').map((rider: any) => (
+              <option key={rider.id} value={rider.id}>
+                {rider.full_name} - {rider.completed_deliveries} completed
+              </option>
+            ))}
           </Select>
           <div className="flex gap-2 justify-end">
             <Button variant="secondary" onClick={() => setShowAssignModal(false)}>Cancel</Button>
-            <Button>Assign Rider</Button>
+            <Button onClick={handleConfirmAssign} disabled={!selectedRider || assignRider.isPending}>
+              {assignRider.isPending ? 'Assigning...' : 'Assign Rider'}
+            </Button>
           </div>
         </div>
       </Modal>

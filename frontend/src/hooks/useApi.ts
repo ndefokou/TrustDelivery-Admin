@@ -56,6 +56,19 @@ export function useAssignRider() {
   })
 }
 
+export function useCancelDelivery() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data } = await api.delete(`/deliveries/${id}`)
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['deliveries'] })
+    },
+  })
+}
+
 export function useRiders(filters?: Record<string, unknown>) {
   return useQuery({
     queryKey: ['riders', filters],
@@ -90,6 +103,46 @@ export function useCreateRider() {
   })
 }
 
+export function useUpdateRider() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, rider }: { id: string; rider: Partial<Rider> }) => {
+      const { data } = await api.put(`/riders/${id}`, rider)
+      return data
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['riders'] })
+      queryClient.invalidateQueries({ queryKey: ['rider', variables.id] })
+    },
+  })
+}
+
+export function useSuspendRider() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data } = await api.post(`/riders/${id}/suspend`)
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['riders'] })
+    },
+  })
+}
+
+export function useActivateRider() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data } = await api.post(`/riders/${id}/activate`)
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['riders'] })
+    },
+  })
+}
+
 export function useMerchants(filters?: Record<string, unknown>) {
   return useQuery({
     queryKey: ['merchants', filters],
@@ -108,6 +161,46 @@ export function useMerchant(id: string) {
       return data
     },
     enabled: !!id,
+  })
+}
+
+export function useUpdateMerchant() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, merchant }: { id: string; merchant: Partial<Merchant> }) => {
+      const { data } = await api.put(`/merchants/${id}`, merchant)
+      return data
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['merchants'] })
+      queryClient.invalidateQueries({ queryKey: ['merchant', variables.id] })
+    },
+  })
+}
+
+export function useSuspendMerchant() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data } = await api.post(`/merchants/${id}/suspend`)
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['merchants'] })
+    },
+  })
+}
+
+export function useActivateMerchant() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data } = await api.post(`/merchants/${id}/activate`)
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['merchants'] })
+    },
   })
 }
 
