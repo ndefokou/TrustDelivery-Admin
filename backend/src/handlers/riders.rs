@@ -160,10 +160,25 @@ pub async fn activate_rider(
 
 pub async fn list_expenses(
     state: web::Data<AppState>,
-    _path: web::Path<Uuid>,
+    path: web::Path<Uuid>,
 ) -> Result<HttpResponse, Error> {
+    let rider_id = path.into_inner();
     let expenses = sqlx::query_as::<_, Expense>(
-        "SELECT id, rider_id, category, amount, description, receipt_image, status, admin_notes, created_at, reviewed_at, reviewed_by FROM rider_expenses ORDER BY created_at DESC LIMIT 50",
+        "SELECT id, rider_id, category, amount, description, receipt_image, status, admin_notes, created_at, reviewed_at, reviewed_by FROM rider_expenses WHERE rider_id = $1 ORDER BY created_at DESC LIMIT 50",
+    )
+    .bind(rider_id)
+    .fetch_all(state.db.as_ref())
+    .await
+    .unwrap_or_default();
+
+    Ok(HttpResponse::Ok().json(expenses))
+}
+
+pub async fn list_all_expenses(
+    state: web::Data<AppState>,
+) -> Result<HttpResponse, Error> {
+    let expenses = sqlx::query_as::<_, crate::models::ExpenseWithRider>(
+        "SELECT e.id, e.rider_id, r.full_name as rider_name, e.category, e.amount::float8, e.description, e.receipt_image, e.status, e.admin_notes, e.created_at, e.reviewed_at, e.reviewed_by FROM rider_expenses e JOIN riders r ON e.rider_id = r.id ORDER BY e.created_at DESC LIMIT 50",
     )
     .fetch_all(state.db.as_ref())
     .await
@@ -227,6 +242,7 @@ pub fn routes() -> actix_web::Scope {
         .route("/{id}", web::put().to(update_rider))
         .route("/{id}/suspend", web::post().to(suspend_rider))
         .route("/{id}/activate", web::post().to(activate_rider))
+        .route("/expenses", web::get().to(list_all_expenses))
         .route("/{id}/expenses", web::get().to(list_expenses))
         .route("/expenses", web::post().to(create_expense))
         .route("/expenses/{id}/review", web::post().to(review_expense))

@@ -101,4 +101,4 @@ backend/.env
 frontend/.env
 
 # Kilo local config (contains MCP secrets)
-.kilo/
+.kilo/**

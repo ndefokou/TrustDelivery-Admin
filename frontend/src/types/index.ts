@@ -105,6 +105,7 @@ export interface Payment {
 export interface Expense {
   id: string
   rider_id: string
+  rider_name?: string
   category: ExpenseCategory
   amount: number
   description: string

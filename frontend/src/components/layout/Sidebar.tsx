@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 import { useUIStore } from '../../stores'
 import {
   LayoutDashboard,
@@ -11,7 +11,7 @@ import {
   ChevronDown,
   X
 } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 interface NavItem {
   name: string
@@ -70,10 +70,30 @@ const navItems: NavItem[] = [
   { name: 'Settings', path: '/settings', icon: <Settings size={20} /> },
 ]
 
+function isActivePath(path: string, pathname: string, search: string) {
+  const [expectedPath, expectedSearch] = path.split('?')
+  if (pathname !== expectedPath) return false
+  return search === (expectedSearch ? `?${expectedSearch}` : '')
+}
+
 export default function Sidebar() {
   const { sidebarOpen, toggleSidebar } = useUIStore()
+  const location = useLocation()
   const [expandedItems, setExpandedItems] = useState<string[]>(['Deliveries'])
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024
+
+  useEffect(() => {
+    for (const item of navItems) {
+      if (item.children) {
+        for (const child of item.children) {
+          if (isActivePath(child.path, location.pathname, location.search)) {
+            setExpandedItems((prev) => (prev.includes(item.name) ? prev : [...prev, item.name]))
+            return
+          }
+        }
+      }
+    }
+  }, [location])
 
   const toggleExpand = (name: string) => {
     setExpandedItems((prev) =>
@@ -141,9 +161,9 @@ export default function Sidebar() {
                             <NavLink
                               to={child.path}
                               onClick={handleNavClick}
-                              className={({ isActive }) =>
+                              className={() =>
                                 `block px-2 sm:px-3 py-1.5 sm:py-2 text-sm rounded-lg transition-colors truncate ${
-                                  isActive
+                                  isActivePath(child.path, location.pathname, location.search)
                                     ? 'bg-secondary text-white'
                                     : 'text-gray-300 hover:bg-primary-700'
                                 }`

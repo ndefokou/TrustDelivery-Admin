@@ -214,7 +214,7 @@ export default function RiderDetails() {
                 </Button>
               )}
               <Button className="w-full" variant="secondary" onClick={() => setShowEditModal(true)}>Edit Profile</Button>
-              <Button className="w-full" variant="secondary" onClick={() => alert('Expenses view coming soon')}>View Expenses</Button>
+              <Button className="w-full" variant="secondary" onClick={() => navigate('/riders?tab=expenses')}>View Expenses</Button>
             </CardContent>
           </Card>
         </div>

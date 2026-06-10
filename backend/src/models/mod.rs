@@ -209,6 +209,22 @@ pub struct Expense {
     pub reviewed_by: Option<Uuid>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct ExpenseWithRider {
+    pub id: Uuid,
+    pub rider_id: Uuid,
+    pub rider_name: String,
+    pub category: ExpenseCategory,
+    pub amount: f64,
+    pub description: String,
+    pub receipt_image: Option<String>,
+    pub status: ExpenseStatus,
+    pub admin_notes: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub reviewed_at: Option<DateTime<Utc>>,
+    pub reviewed_by: Option<Uuid>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type)]
 #[sqlx(type_name = "text")]
 pub enum NotificationType {
