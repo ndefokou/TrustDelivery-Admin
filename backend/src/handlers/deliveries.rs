@@ -104,7 +104,20 @@ pub async fn create_delivery(
     .await;
 
     match delivery {
-        Ok(del) => Ok(HttpResponse::Created().json(del)),
+        Ok(del) => {
+            // Create notification for new paid delivery
+            let _ = sqlx::query(
+                "INSERT INTO notifications (notification_type, title, message, reference_id, is_read, created_at) VALUES ($1::notification_type, $2, $3, $4, false, NOW())"
+            )
+            .bind("new_paid_delivery")
+            .bind("New Paid Delivery")
+            .bind(format!("A new delivery for {} has been paid and is awaiting assignment.", del.product_description))
+            .bind(del.id)
+            .execute(state.db.as_ref())
+            .await;
+
+            Ok(HttpResponse::Created().json(del))
+        },
         _ => Ok(HttpResponse::BadRequest().json(serde_json::json!({
             "error": "Failed to create delivery"
         }))),
@@ -117,7 +130,7 @@ pub async fn assign_rider(
     req: web::Json<AssignRiderRequest>,
 ) -> Result<HttpResponse, Error> {
     let delivery_id = path.into_inner();
-    
+
     let delivery = sqlx::query_as::<_, crate::models::Delivery>(
         "UPDATE deliveries SET assigned_rider_id = $1, status = 'assigned', assigned_at = $2 WHERE id = $3 RETURNING id, product_description, product_value, delivery_cost, distance_km, customer_name, customer_phone, delivery_address, delivery_lat, delivery_lng, merchant_id, assigned_rider_id, status, failure_reason, otp_code, otp_verified, created_at, paid_at, assigned_at, picked_up_at, delivered_at, failed_at",
     )
@@ -128,7 +141,20 @@ pub async fn assign_rider(
     .await;
 
     match delivery {
-        Ok(del) => Ok(HttpResponse::Ok().json(del)),
+        Ok(del) => {
+            // Create notification for delivery assigned
+            let _ = sqlx::query(
+                "INSERT INTO notifications (notification_type, title, message, reference_id, is_read, created_at) VALUES ($1::notification_type, $2, $3, $4, false, NOW())"
+            )
+            .bind("delivery_assigned")
+            .bind("Delivery Assigned")
+            .bind(format!("A delivery for {} has been assigned to a rider.", del.product_description))
+            .bind(del.id)
+            .execute(state.db.as_ref())
+            .await;
+
+            Ok(HttpResponse::Ok().json(del))
+        },
         _ => Ok(HttpResponse::BadRequest().json(serde_json::json!({
             "error": "Failed to assign rider"
         }))),
@@ -166,16 +192,29 @@ pub async fn cancel_delivery(
     path: web::Path<Uuid>,
 ) -> Result<HttpResponse, Error> {
     let id = path.into_inner();
-    
-    let result = sqlx::query("DELETE FROM deliveries WHERE id = $1")
-        .bind(id)
-        .execute(state.db.as_ref())
-        .await;
 
-    match result {
-        Ok(_) => Ok(HttpResponse::Ok().json(serde_json::json!({
-            "message": "Delivery cancelled"
-        }))),
+    let delivery = sqlx::query_as::<_, crate::models::Delivery>(
+        "UPDATE deliveries SET status = 'failed'::delivery_status, failed_at = NOW(), failure_reason = 'Cancelled by admin' WHERE id = $1 RETURNING id, product_description, product_value, delivery_cost, distance_km, customer_name, customer_phone, delivery_address, delivery_lat, delivery_lng, merchant_id, assigned_rider_id, status, failure_reason, otp_code, otp_verified, created_at, paid_at, assigned_at, picked_up_at, delivered_at, failed_at",
+    )
+    .bind(id)
+    .fetch_one(state.db.as_ref())
+    .await;
+
+    match delivery {
+        Ok(del) => {
+            // Create notification for failed delivery
+            let _ = sqlx::query(
+                "INSERT INTO notifications (notification_type, title, message, reference_id, is_read, created_at) VALUES ($1::notification_type, $2, $3, $4, false, NOW())"
+            )
+            .bind("failed_delivery")
+            .bind("Delivery Failed")
+            .bind(format!("Delivery for {} failed: Cancelled by admin.", del.product_description))
+            .bind(del.id)
+            .execute(state.db.as_ref())
+            .await;
+
+            Ok(HttpResponse::Ok().json(del))
+        }
         _ => Ok(HttpResponse::NotFound().json(serde_json::json!({
             "error": "Delivery not found"
         }))),

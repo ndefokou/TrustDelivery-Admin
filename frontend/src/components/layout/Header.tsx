@@ -8,12 +8,14 @@ import {
   LogOut
 } from 'lucide-react'
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 export default function Header() {
   const { user, logout } = useAuthStore()
   const { darkMode, toggleDarkMode } = useUIStore()
   const { data: notifications } = useNotifications()
   const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const navigate = useNavigate()
 
   const unreadCount = notifications?.unread_count || 0
 
@@ -29,6 +31,7 @@ export default function Header() {
 
         <div className="relative">
           <button
+            onClick={() => navigate('/notifications')}
             className="p-1.5 sm:p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-primary-700 relative"
           >
             <Bell size={18} className="sm:w-5 sm:h-5" />

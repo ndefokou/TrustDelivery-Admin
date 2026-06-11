@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { usePayments } from '../hooks/useApi'
+import { useMerchants } from '../hooks/useApi'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { Input, Select } from '../components/ui/Input'
@@ -14,6 +15,12 @@ const paymentMethodIcons: Record<string, React.ReactNode> = {
   bank_transfer: <Building size={16} className="text-secondary" />,
 }
 
+const paymentMethodLabels: Record<string, string> = {
+  orange_money: 'Orange Money',
+  mtn_mobile_money: 'MTN Mobile Money',
+  bank_transfer: 'Bank Transfer',
+}
+
 export default function Payments() {
   const [filters, setFilters] = useState({
     status: '',
@@ -23,7 +30,47 @@ export default function Payments() {
     search: '',
   })
 
-  const { isLoading } = usePayments(filters)
+  const { data, isLoading } = usePayments(filters)
+  const { data: merchantsData } = useMerchants()
+
+  const merchants = merchantsData?.merchants || []
+  const payments = data?.payments || []
+
+  const filteredPayments = useMemo(() => {
+    let list = [...payments]
+
+    if (filters.status) {
+      list = list.filter((p) => p.status === filters.status)
+    }
+    if (filters.date_from) {
+      const from = new Date(filters.date_from).getTime()
+      list = list.filter((p) => new Date(p.created_at).getTime() >= from)
+    }
+    if (filters.date_to) {
+      const to = new Date(filters.date_to).getTime()
+      list = list.filter((p) => new Date(p.created_at).getTime() <= to)
+    }
+    if (filters.search) {
+      const q = filters.search.toLowerCase()
+      list = list.filter(
+        (p) =>
+          p.transaction_id.toLowerCase().includes(q) ||
+          String(p.amount).includes(q)
+      )
+    }
+
+    return list.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+  }, [payments, filters])
+
+  const totalPayments = filteredPayments.length
+  const totalAmount = filteredPayments.reduce((acc, p) => acc + p.amount, 0)
+  const pendingCount = filteredPayments.filter((p) => p.status === 'pending').length
+  const failedCount = filteredPayments.filter((p) => p.status === 'failed').length
+
+  const getMerchantName = (merchantId: string) => {
+    const merchant = merchants.find((m: any) => m.id === merchantId)
+    return merchant?.business_name || '—'
+  }
 
   return (
     <div className="space-y-6">
@@ -42,7 +89,7 @@ export default function Payments() {
               <CreditCard className="text-success" size={20} />
             </div>
             <div>
-              <p className="text-lg sm:text-2xl font-bold">156</p>
+              <p className="text-lg sm:text-2xl font-bold">{totalPayments}</p>
               <p className="text-xs sm:text-sm text-gray-500">Total Payments</p>
             </div>
           </div>
@@ -53,7 +100,7 @@ export default function Payments() {
               <Smartphone className="text-secondary" size={20} />
             </div>
             <div>
-              <p className="text-lg sm:text-2xl font-bold">2.4M</p>
+              <p className="text-lg sm:text-2xl font-bold">{(totalAmount / 1000000).toFixed(2)}M</p>
               <p className="text-xs sm:text-sm text-gray-500">Total Amount</p>
             </div>
           </div>
@@ -64,7 +111,7 @@ export default function Payments() {
               <CreditCard className="text-warning" size={20} />
             </div>
             <div>
-              <p className="text-lg sm:text-2xl font-bold">8</p>
+              <p className="text-lg sm:text-2xl font-bold">{pendingCount}</p>
               <p className="text-xs sm:text-sm text-gray-500">Pending</p>
             </div>
           </div>
@@ -75,7 +122,7 @@ export default function Payments() {
               <CreditCard className="text-danger" size={20} />
             </div>
             <div>
-              <p className="text-lg sm:text-2xl font-bold">3</p>
+              <p className="text-lg sm:text-2xl font-bold">{failedCount}</p>
               <p className="text-xs sm:text-sm text-gray-500">Failed</p>
             </div>
           </div>
@@ -143,55 +190,35 @@ export default function Payments() {
                     </div>
                   </Td>
                 </Tr>
+              ) : filteredPayments.length === 0 ? (
+                <Tr>
+                  <Td colSpan={6} className="text-center py-8 text-gray-500">
+                    No payments found
+                  </Td>
+                </Tr>
               ) : (
-                <>
-                  <Tr>
-                    <Td className="font-mono text-xs sm:text-sm">TXN-2024-001</Td>
-                    <Td className="hidden sm:table-cell">Arthur Electronics</Td>
-                    <Td className="font-medium">2,500 FCFA</Td>
+                filteredPayments.map((payment) => (
+                  <Tr key={payment.id}>
+                    <Td className="font-mono text-xs sm:text-sm">{payment.transaction_id}</Td>
+                    <Td className="hidden sm:table-cell">{getMerchantName(payment.merchant_id)}</Td>
+                    <Td className="font-medium">{payment.amount.toLocaleString()} FCFA</Td>
                     <Td className="hidden md:table-cell">
                       <div className="flex items-center gap-2">
-                        {paymentMethodIcons.orange_money}
-                        <span>Orange Money</span>
+                        {paymentMethodIcons[payment.payment_method] || <Smartphone size={16} />}
+                        <span>{paymentMethodLabels[payment.payment_method] || payment.payment_method}</span>
                       </div>
                     </Td>
-                    <Td className="hidden sm:table-cell">{format(new Date(), 'MMM dd, yyyy HH:mm')}</Td>
-                    <Td><StatusBadge status="completed" /></Td>
+                    <Td className="hidden sm:table-cell">{format(new Date(payment.created_at), 'MMM dd, yyyy HH:mm')}</Td>
+                    <Td><StatusBadge status={payment.status} /></Td>
                   </Tr>
-                  <Tr>
-                    <Td className="font-mono text-xs sm:text-sm">TXN-2024-002</Td>
-                    <Td className="hidden sm:table-cell">Bastos Fashion</Td>
-                    <Td className="font-medium">1,500 FCFA</Td>
-                    <Td className="hidden md:table-cell">
-                      <div className="flex items-center gap-2">
-                        {paymentMethodIcons.mtn_mobile_money}
-                        <span>MTN Mobile Money</span>
-                      </div>
-                    </Td>
-                    <Td className="hidden sm:table-cell">{format(new Date(), 'MMM dd, yyyy HH:mm')}</Td>
-                    <Td><StatusBadge status="pending" /></Td>
-                  </Tr>
-                  <Tr>
-                    <Td className="font-mono text-xs sm:text-sm">TXN-2024-003</Td>
-                    <Td className="hidden sm:table-cell">Mvog-Mbi Market</Td>
-                    <Td className="font-medium">3,000 FCFA</Td>
-                    <Td className="hidden md:table-cell">
-                      <div className="flex items-center gap-2">
-                        {paymentMethodIcons.bank_transfer}
-                        <span>Bank Transfer</span>
-                      </div>
-                    </Td>
-                    <Td className="hidden sm:table-cell">{format(new Date(), 'MMM dd, yyyy HH:mm')}</Td>
-                    <Td><StatusBadge status="completed" /></Td>
-                  </Tr>
-                </>
+                ))
               )}
             </Tbody>
           </Table>
 
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mt-4 pt-4 border-t border-gray-200 dark:border-primary-700">
             <p className="text-sm text-gray-500">
-              Showing 1-10 of 156 payments
+              Showing {filteredPayments.length} payments
             </p>
             <div className="flex gap-2">
               <Button variant="secondary" size="sm">Previous</Button>

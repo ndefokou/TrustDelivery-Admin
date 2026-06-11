@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { useRiders, useCreateRider, useUpdateRider, useSuspendRider, useActivateRider, useRiderPerformance, useRiderExpenses } from '../hooks/useApi'
+import { useRiders, useCreateRider, useUpdateRider, useSuspendRider, useActivateRider, useRiderPerformance, useRiderExpenses, useReviewExpense } from '../hooks/useApi'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { FloatingActionButton } from '../components/ui/FloatingActionButton'
@@ -29,6 +29,7 @@ export default function Riders() {
 
   const [showAddModal, setShowAddModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
+  const [showReviewModal, setShowReviewModal] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [newRider, setNewRider] = useState({
     full_name: '',
@@ -38,6 +39,8 @@ export default function Riders() {
     motorbike_registration: '',
   })
   const [editingRider, setEditingRider] = useState<any>(null)
+  const [reviewingExpense, setReviewingExpense] = useState<any>(null)
+  const [reviewForm, setReviewForm] = useState({ status: 'approved', admin_notes: '' })
 
   const { data: ridersData, isLoading: ridersLoading } = useRiders(filters)
   const { data: performance, isLoading: perfLoading } = useRiderPerformance()
@@ -47,6 +50,7 @@ export default function Riders() {
   const updateRider = useUpdateRider()
   const suspendRider = useSuspendRider()
   const activateRider = useActivateRider()
+  const reviewExpense = useReviewExpense()
 
   const handleCreateRider = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -84,13 +88,33 @@ export default function Riders() {
     }
   }
 
+  const handleReviewExpense = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!reviewingExpense) return
+    try {
+      await reviewExpense.mutateAsync({
+        id: reviewingExpense.id,
+        status: reviewForm.status,
+        admin_notes: reviewForm.admin_notes,
+      })
+      setShowReviewModal(false)
+      setReviewingExpense(null)
+      setReviewForm({ status: 'approved', admin_notes: '' })
+      setError(null)
+    } catch (err) {
+      const axiosError = err as AxiosError<{ error: string }>
+      const message = axiosError.response?.data?.error || 'Failed to review expense'
+      setError(message)
+    }
+  }
+
   const riders = ridersData?.riders || []
 
-  const filteredPerformance = performance?.filter((r: any) =>
+  const filteredPerformance = (performance || []).filter((r: any) =>
     r.rider_name.toLowerCase().includes(perfSearch.toLowerCase())
-  ) || []
+  )
 
-  const filteredExpenses = expenses?.filter((e: any) => {
+  const filteredExpenses = (expenses || []).filter((e: any) => {
     const matchesCategory = expenseFilters.category ? e.category === expenseFilters.category : true
     const matchesStatus = expenseFilters.status ? e.status === expenseFilters.status : true
     const matchesSearch = expenseFilters.search
@@ -98,7 +122,7 @@ export default function Riders() {
           e.description.toLowerCase().includes(expenseFilters.search.toLowerCase()))
       : true
     return matchesCategory && matchesStatus && matchesSearch
-  }) || []
+  })
 
   return (
     <div className="space-y-6">
@@ -382,12 +406,13 @@ export default function Riders() {
                   <Th className="hidden md:table-cell">Description</Th>
                   <Th>Status</Th>
                   <Th className="hidden sm:table-cell">Date</Th>
+                  <Th>Actions</Th>
                 </Tr>
               </Thead>
               <Tbody>
                 {expensesLoading ? (
                   <Tr>
-                    <Td colSpan={6} className="text-center py-8">
+                    <Td colSpan={7} className="text-center py-8">
                       <div className="flex items-center justify-center">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-secondary"></div>
                       </div>
@@ -395,7 +420,7 @@ export default function Riders() {
                   </Tr>
                 ) : filteredExpenses.length === 0 ? (
                   <Tr>
-                    <Td colSpan={6} className="text-center py-8 text-gray-500">
+                    <Td colSpan={7} className="text-center py-8 text-gray-500">
                       No expenses found
                     </Td>
                   </Tr>
@@ -415,6 +440,19 @@ export default function Riders() {
                       <Td className="hidden md:table-cell truncate max-w-[200px]">{expense.description}</Td>
                       <Td><StatusBadge status={expense.status} /></Td>
                       <Td className="hidden sm:table-cell">{format(new Date(expense.created_at), 'MMM dd, yyyy')}</Td>
+                      <Td>
+                        {expense.status === 'pending' ? (
+                          <Button
+                            size="sm"
+                            variant="primary"
+                            onClick={() => { setReviewingExpense(expense); setReviewForm({ status: 'approved', admin_notes: '' }); setError(null); setShowReviewModal(true) }}
+                          >
+                            Review
+                          </Button>
+                        ) : (
+                          <span className="text-sm text-gray-500">—</span>
+                        )}
+                      </Td>
                     </Tr>
                   ))
                 )}
@@ -423,6 +461,51 @@ export default function Riders() {
           </CardContent>
         </Card>
       )}
+
+      <Modal isOpen={showReviewModal} onClose={() => { setShowReviewModal(false); setReviewingExpense(null); setError(null) }} title="Review Expense" size="lg">
+        {reviewingExpense && (
+          <form onSubmit={handleReviewExpense} className="space-y-4">
+            {error && (
+              <div className="p-3 bg-red-100 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-md text-red-700 dark:text-red-400 text-sm">
+                {error}
+              </div>
+            )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Rider</p>
+                <p className="font-medium">{reviewingExpense.rider_name || 'Unknown'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Amount</p>
+                <p className="font-medium">{reviewingExpense.amount.toLocaleString()} FCFA</p>
+              </div>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500 mb-1">Description</p>
+              <p className="font-medium">{reviewingExpense.description}</p>
+            </div>
+            <Select
+              label="Decision"
+              value={reviewForm.status}
+              onChange={(e) => setReviewForm({ ...reviewForm, status: e.target.value })}
+            >
+              <option value="approved">Approve</option>
+              <option value="rejected">Reject</option>
+            </Select>
+            <Input
+              label="Admin Notes (optional)"
+              value={reviewForm.admin_notes}
+              onChange={(e) => setReviewForm({ ...reviewForm, admin_notes: e.target.value })}
+            />
+            <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end">
+              <Button type="button" variant="secondary" onClick={() => setShowReviewModal(false)} className="w-full sm:w-auto">Cancel</Button>
+              <Button type="submit" disabled={reviewExpense.isPending} className="w-full sm:w-auto">
+                {reviewExpense.isPending ? 'Saving...' : 'Submit Review'}
+              </Button>
+            </div>
+          </form>
+        )}
+      </Modal>
 
       <Modal isOpen={showAddModal} onClose={() => { setShowAddModal(false); setError(null) }} title="Add New Rider" size="lg">
         <form onSubmit={handleCreateRider} className="space-y-4">

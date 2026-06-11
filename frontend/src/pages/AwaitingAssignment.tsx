@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useAwaitingDeliveries, useRiders, useAssignRider } from '../hooks/useApi'
+import { useAwaitingDeliveries, useRiders, useAssignRider, useMerchants } from '../hooks/useApi'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { FloatingActionButton } from '../components/ui/FloatingActionButton'
@@ -17,7 +17,13 @@ export default function AwaitingAssignment() {
 
   const { data: deliveries, isLoading } = useAwaitingDeliveries()
   const { data: riders } = useRiders()
+  const { data: merchantsData } = useMerchants()
   const assignRider = useAssignRider()
+
+  const getMerchantName = (merchantId: string) => {
+    const merchant = merchantsData?.merchants?.find((m: any) => m.id === merchantId)
+    return merchant?.business_name || 'Merchant Name'
+  }
 
   const handleSelectDelivery = (id: string) => {
     setSelectedDeliveries(prev => 
@@ -197,7 +203,7 @@ export default function AwaitingAssignment() {
                       </Td>
                       <Td className="font-mono text-xs">{delivery.id.slice(0, 8)}</Td>
                       <Td className="hidden sm:table-cell">
-                        <p className="font-medium truncate max-w-[150px]">Merchant Name</p>
+                        <p className="font-medium truncate max-w-[150px]">{getMerchantName(delivery.merchant_id)}</p>
                       </Td>
                       <Td>
                         <p className="font-medium truncate max-w-[150px]">{delivery.customer_name}</p>

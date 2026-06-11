@@ -1,6 +1,6 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { useDeliveries, useRiders, useAssignRider } from '../hooks/useApi'
+import { useState, useEffect } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useDeliveries, useRiders, useAssignRider, useMerchants } from '../hooks/useApi'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { Input, Select } from '../components/ui/Input'
@@ -12,14 +12,22 @@ import { format } from 'date-fns'
 
 export default function Deliveries() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+
   const [filters, setFilters] = useState({
-    status: '',
+    status: searchParams.get('status') || '',
     search: '',
     date_from: '',
     date_to: '',
     merchant: '',
     rider: '',
   })
+
+  // Sync status filter when URL query param changes (e.g. sidebar links)
+  useEffect(() => {
+    const status = searchParams.get('status') || ''
+    setFilters((prev) => (prev.status === status ? prev : { ...prev, status }))
+  }, [searchParams])
   const [showFilters, setShowFilters] = useState(false)
   const [showAssignModal, setShowAssignModal] = useState(false)
   const [selectedDelivery, setSelectedDelivery] = useState<string | null>(null)
@@ -27,7 +35,13 @@ export default function Deliveries() {
 
   const { data: deliveries, isLoading } = useDeliveries(filters)
   const { data: riders } = useRiders()
+  const { data: merchantsData } = useMerchants()
   const assignRider = useAssignRider()
+
+  const getMerchantName = (merchantId: string) => {
+    const merchant = merchantsData?.merchants?.find((m: any) => m.id === merchantId)
+    return merchant?.business_name || '—'
+  }
 
   const handleView = (id: string) => {
     navigate(`/deliveries/${id}`)
@@ -128,6 +142,7 @@ export default function Deliveries() {
               <Tr>
                 <Th>ID</Th>
                 <Th className="hidden sm:table-cell">Product</Th>
+                <Th className="hidden sm:table-cell">Merchant</Th>
                 <Th>Customer</Th>
                 <Th className="hidden md:table-cell">Address</Th>
                 <Th>Cost</Th>
@@ -139,7 +154,7 @@ export default function Deliveries() {
             <Tbody>
               {isLoading ? (
                 <Tr>
-                  <Td colSpan={8} className="text-center py-8">
+                  <Td colSpan={9} className="text-center py-8">
                     <div className="flex items-center justify-center">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-secondary"></div>
                     </div>
@@ -147,7 +162,7 @@ export default function Deliveries() {
                 </Tr>
               ) : deliveries?.deliveries?.length === 0 ? (
                 <Tr>
-                  <Td colSpan={8} className="text-center py-8 text-gray-500">
+                  <Td colSpan={9} className="text-center py-8 text-gray-500">
                     No deliveries found
                   </Td>
                 </Tr>
@@ -156,6 +171,9 @@ export default function Deliveries() {
                   <Tr key={delivery.id}>
                     <Td className="font-mono text-xs">{delivery.id.slice(0, 8)}</Td>
                     <Td className="hidden sm:table-cell">{delivery.product_description.slice(0, 30)}...</Td>
+                    <Td className="hidden sm:table-cell">
+                      <p className="font-medium truncate max-w-[150px]">{getMerchantName(delivery.merchant_id)}</p>
+                    </Td>
                     <Td>
                       <div>
                         <p className="font-medium">{delivery.customer_name}</p>

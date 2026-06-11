@@ -11,6 +11,7 @@ import MerchantDetails from './pages/MerchantDetails'
 import Reports from './pages/Reports'
 import Payments from './pages/Payments'
 import Settings from './pages/Settings'
+import Notifications from './pages/Notifications'
 
 export default function App() {
   return (
@@ -29,6 +30,7 @@ export default function App() {
           <Route path="reports" element={<Reports />} />
           <Route path="payments" element={<Payments />} />
           <Route path="settings" element={<Settings />} />
+          <Route path="notifications" element={<Notifications />} />
         </Route>
       </Routes>
     </Router>

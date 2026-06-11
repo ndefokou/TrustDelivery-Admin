@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useMerchants, useUpdateMerchant, useSuspendMerchant } from '../hooks/useApi'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
@@ -7,11 +7,19 @@ import { Input, Select } from '../components/ui/Input'
 import { Table, Thead, Tbody, Tr, Th, Td } from '../components/ui/Table'
 import { StatusBadge } from '../components/ui/Badge'
 import { Modal } from '../components/ui/Modal'
-import { Search, Eye, Edit, Ban, Store, Package, DollarSign } from 'lucide-react'
+import { Search, Eye, Edit, Ban, Store, Package, DollarSign, TrendingUp, ListChecks } from 'lucide-react'
 import { format } from 'date-fns'
+
+const tabs = [
+  { id: 'list', label: 'Merchant List', icon: ListChecks },
+  { id: 'activity', label: 'Merchant Activity', icon: TrendingUp },
+]
 
 export default function Merchants() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const activeTab = searchParams.get('tab') || 'list'
+
   const [filters, setFilters] = useState({ status: '', search: '' })
   const [showEditModal, setShowEditModal] = useState(false)
   const [editingMerchant, setEditingMerchant] = useState<any>(null)
@@ -44,10 +52,33 @@ export default function Merchants() {
     }
   }
 
+  const listData = merchants?.merchants || []
+  const activityData = [...listData].sort((a: any, b: any) => b.total_deliveries - a.total_deliveries)
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Merchants</h1>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {tabs.map((tab) => (
+          <Button
+            key={tab.id}
+            variant={activeTab === tab.id ? 'primary' : 'secondary'}
+            onClick={() => {
+              if (tab.id === 'list') {
+                navigate('/merchants')
+              } else {
+                setSearchParams({ tab: tab.id })
+              }
+            }}
+            size="sm"
+          >
+            <tab.icon size={16} />
+            {tab.label}
+          </Button>
+        ))}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
@@ -90,20 +121,113 @@ export default function Merchants() {
         </Card>
       </div>
 
-      <Card>
-        <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <CardTitle>Merchant List</CardTitle>
-          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-            <Select
-              value={filters.status}
-              onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-              className="w-full sm:w-40"
-            >
-              <option value="">All Status</option>
-              <option value="active">Active</option>
-              <option value="suspended">Suspended</option>
-              <option value="pending">Pending</option>
-            </Select>
+      {activeTab === 'list' && (
+        <Card>
+          <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <CardTitle>Merchant List</CardTitle>
+            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+              <Select
+                value={filters.status}
+                onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+                className="w-full sm:w-40"
+              >
+                <option value="">All Status</option>
+                <option value="active">Active</option>
+                <option value="suspended">Suspended</option>
+                <option value="pending">Pending</option>
+              </Select>
+              <div className="relative flex-1 sm:flex-initial">
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <Input
+                  type="text"
+                  placeholder="Search merchants..."
+                  value={filters.search}
+                  onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+                  className="pl-9 w-full sm:w-64"
+                />
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <Thead>
+                <Tr>
+                  <Th>Business</Th>
+                  <Th className="hidden sm:table-cell">Contact</Th>
+                  <Th>Status</Th>
+                  <Th className="hidden md:table-cell">Deliveries</Th>
+                  <Th className="hidden md:table-cell">Revenue</Th>
+                  <Th className="hidden sm:table-cell">Active</Th>
+                  <Th className="hidden lg:table-cell">Joined</Th>
+                  <Th>Actions</Th>
+                </Tr>
+              </Thead>
+              <Tbody>
+                {isLoading ? (
+                  <Tr>
+                    <Td colSpan={8} className="text-center py-8">
+                      <div className="flex items-center justify-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-secondary"></div>
+                      </div>
+                    </Td>
+                  </Tr>
+                ) : listData.length === 0 ? (
+                  <Tr>
+                    <Td colSpan={8} className="text-center py-8 text-gray-500">
+                      No merchants found
+                    </Td>
+                  </Tr>
+                ) : (
+                  listData.map((merchant: any) => (
+                    <Tr key={merchant.id} className="cursor-pointer" onClick={() => navigate(`/merchants/${merchant.id}`)}>
+                      <Td>
+                        <div className="min-w-0">
+                          <p className="font-medium truncate">{merchant.business_name}</p>
+                          <p className="text-xs text-gray-500 truncate">{merchant.owner_name}</p>
+                          <p className="text-xs text-gray-500 sm:hidden">{merchant.email}</p>
+                        </div>
+                      </Td>
+                      <Td className="hidden sm:table-cell">
+                        <div>
+                          <p className="text-sm truncate max-w-[200px]">{merchant.email}</p>
+                          <p className="text-xs text-gray-500">{merchant.phone_number}</p>
+                        </div>
+                      </Td>
+                      <Td><StatusBadge status={merchant.status} /></Td>
+                      <Td className="hidden md:table-cell">{merchant.total_deliveries}</Td>
+                      <Td className="hidden md:table-cell font-medium">{merchant.total_revenue.toLocaleString()} FCFA</Td>
+                      <Td className="hidden sm:table-cell">
+                        <span className="text-secondary">{merchant.active_deliveries}</span>
+                      </Td>
+                      <Td className="hidden lg:table-cell">{format(new Date(merchant.created_at), 'MMM dd, yyyy')}</Td>
+                      <Td>
+                        <div className="flex items-center gap-1">
+                          <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); navigate(`/merchants/${merchant.id}`) }}>
+                            <Eye size={14} />
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); setEditingMerchant(merchant); setShowEditModal(true) }} className="hidden sm:flex">
+                            <Edit size={14} />
+                          </Button>
+                          {merchant.status !== 'suspended' && (
+                            <Button size="sm" variant="ghost" className="text-danger" onClick={(e) => { e.stopPropagation(); suspendMerchant.mutate(merchant.id) }} disabled={suspendMerchant.isPending}>
+                              <Ban size={14} />
+                            </Button>
+                          )}
+                        </div>
+                      </Td>
+                    </Tr>
+                  ))
+                )}
+              </Tbody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
+
+      {activeTab === 'activity' && (
+        <Card>
+          <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <CardTitle>Merchant Activity</CardTitle>
             <div className="relative flex-1 sm:flex-initial">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <Input
@@ -114,82 +238,62 @@ export default function Merchants() {
                 className="pl-9 w-full sm:w-64"
               />
             </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <Thead>
-              <Tr>
-                <Th>Business</Th>
-                <Th className="hidden sm:table-cell">Contact</Th>
-                <Th>Status</Th>
-                <Th className="hidden md:table-cell">Deliveries</Th>
-                <Th className="hidden md:table-cell">Revenue</Th>
-                <Th className="hidden sm:table-cell">Active</Th>
-                <Th className="hidden lg:table-cell">Joined</Th>
-                <Th>Actions</Th>
-              </Tr>
-            </Thead>
-            <Tbody>
-              {isLoading ? (
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <Thead>
                 <Tr>
-                  <Td colSpan={8} className="text-center py-8">
-                    <div className="flex items-center justify-center">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-secondary"></div>
-                    </div>
-                  </Td>
+                  <Th>Business</Th>
+                  <Th className="hidden sm:table-cell">Owner</Th>
+                  <Th className="text-right">Total Deliveries</Th>
+                  <Th className="text-right hidden md:table-cell">Active</Th>
+                  <Th className="text-right hidden md:table-cell">Revenue</Th>
+                  <Th>Status</Th>
+                  <Th className="hidden sm:table-cell">Joined</Th>
                 </Tr>
-              ) : merchants?.merchants?.length === 0 ? (
-                <Tr>
-                  <Td colSpan={8} className="text-center py-8 text-gray-500">
-                    No merchants found
-                  </Td>
-                </Tr>
-              ) : (
-                merchants?.merchants?.map((merchant: any) => (
-                  <Tr key={merchant.id} className="cursor-pointer" onClick={() => navigate(`/merchants/${merchant.id}`)}>
-                    <Td>
-                      <div className="min-w-0">
-                        <p className="font-medium truncate">{merchant.business_name}</p>
-                        <p className="text-xs text-gray-500 truncate">{merchant.owner_name}</p>
-                        <p className="text-xs text-gray-500 sm:hidden">{merchant.email}</p>
-                      </div>
-                    </Td>
-                    <Td className="hidden sm:table-cell">
-                      <div>
-                        <p className="text-sm truncate max-w-[200px]">{merchant.email}</p>
-                        <p className="text-xs text-gray-500">{merchant.phone_number}</p>
-                      </div>
-                    </Td>
-                    <Td><StatusBadge status={merchant.status} /></Td>
-                    <Td className="hidden md:table-cell">{merchant.total_deliveries}</Td>
-                    <Td className="hidden md:table-cell font-medium">{merchant.total_revenue.toLocaleString()} FCFA</Td>
-                    <Td className="hidden sm:table-cell">
-                      <span className="text-secondary">{merchant.active_deliveries}</span>
-                    </Td>
-                    <Td className="hidden lg:table-cell">{format(new Date(merchant.created_at), 'MMM dd, yyyy')}</Td>
-                    <Td>
-                      <div className="flex items-center gap-1">
-                        <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); navigate(`/merchants/${merchant.id}`) }}>
-                          <Eye size={14} />
-                        </Button>
-                        <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); setEditingMerchant(merchant); setShowEditModal(true) }} className="hidden sm:flex">
-                          <Edit size={14} />
-                        </Button>
-                        {merchant.status !== 'suspended' && (
-                          <Button size="sm" variant="ghost" className="text-danger" onClick={(e) => { e.stopPropagation(); suspendMerchant.mutate(merchant.id) }} disabled={suspendMerchant.isPending}>
-                            <Ban size={14} />
-                          </Button>
-                        )}
+              </Thead>
+              <Tbody>
+                {isLoading ? (
+                  <Tr>
+                    <Td colSpan={7} className="text-center py-8">
+                      <div className="flex items-center justify-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-secondary"></div>
                       </div>
                     </Td>
                   </Tr>
-                ))
-              )}
-            </Tbody>
-          </Table>
-        </CardContent>
-      </Card>
+                ) : activityData.length === 0 ? (
+                  <Tr>
+                    <Td colSpan={7} className="text-center py-8 text-gray-500">
+                      No activity data found
+                    </Td>
+                  </Tr>
+                ) : (
+                  activityData.map((merchant: any) => (
+                    <Tr key={merchant.id} className="cursor-pointer" onClick={() => navigate(`/merchants/${merchant.id}`)}>
+                      <Td>
+                        <div className="min-w-0">
+                          <p className="font-medium truncate">{merchant.business_name}</p>
+                          <p className="text-xs text-gray-500 sm:hidden">{merchant.total_deliveries} deliveries</p>
+                        </div>
+                      </Td>
+                      <Td className="hidden sm:table-cell">
+                        <p className="text-sm truncate max-w-[200px]">{merchant.owner_name}</p>
+                      </Td>
+                      <Td className="text-right font-medium">{merchant.total_deliveries}</Td>
+                      <Td className="text-right hidden md:table-cell">
+                        <span className="text-secondary">{merchant.active_deliveries}</span>
+                      </Td>
+                      <Td className="text-right hidden md:table-cell font-medium">{merchant.total_revenue.toLocaleString()} FCFA</Td>
+                      <Td><StatusBadge status={merchant.status} /></Td>
+                      <Td className="hidden sm:table-cell">{format(new Date(merchant.created_at), 'MMM dd, yyyy')}</Td>
+                    </Tr>
+                  ))
+                )}
+              </Tbody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
 
       <Modal isOpen={showEditModal} onClose={() => { setShowEditModal(false); setEditingMerchant(null); setError(null) }} title="Edit Merchant" size="lg">
         {editingMerchant && (

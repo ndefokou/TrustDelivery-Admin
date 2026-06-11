@@ -32,7 +32,16 @@ INSERT INTO deliveries (id, product_description, product_value, delivery_cost, d
 (uuid_generate_v4(), 'Laptop Computer Bag', 35000, 2000, 6.5, 'Fabrice Mbah', '+237 644 000 555', 'Obili, Yaoundé', (SELECT id FROM merchants LIMIT 1 OFFSET 4), (SELECT id FROM riders LIMIT 1 OFFSET 2), 'delivered', '567890', NOW() - INTERVAL '5 hours', NOW() - INTERVAL '5 hours', NOW() - INTERVAL '4 hours'),
 (uuid_generate_v4(), 'ACER Laptop', 350000, 2500, 8.2, 'Junior Nguema', '+237 622 000 666', 'Messa, Yaoundé', (SELECT id FROM merchants LIMIT 1 OFFSET 5), NULL, 'awaiting_assignment', '678901', NOW() - INTERVAL '20 minutes', NOW() - INTERVAL '20 minutes', NULL),
 (uuid_generate_v4(), 'Groceries Pack', 28000, 1000, 2.5, 'Evelyne Atangana', '+237 611 000 777', 'Ngoa-Ekellé, Yaoundé', (SELECT id FROM merchants LIMIT 1 OFFSET 6), (SELECT id FROM riders LIMIT 1 OFFSET 3), 'failed', '789012', NOW() - INTERVAL '3 hours', NOW() - INTERVAL '3 hours', NOW() - INTERVAL '2.5 hours'),
-(uuid_generate_v4(), 'Bluetooth Speakers', 45000, 1500, 3.8, 'David Fofe', '+237 699 000 888', 'Mvan, Yaoundé', (SELECT id FROM merchants LIMIT 1 OFFSET 7), (SELECT id FROM riders LIMIT 1 OFFSET 4), 'delivered', '890123', NOW() - INTERVAL '6 hours', NOW() - INTERVAL '6 hours', NOW() - INTERVAL '5 hours');
+(uuid_generate_v4(), 'Bluetooth Speakers', 45000, 1500, 3.8, 'David Fofe', '+237 699 000 888', 'Mvan, Yaoundé', (SELECT id FROM merchants LIMIT 1 OFFSET 7), (SELECT id FROM riders LIMIT 1 OFFSET 4), 'delivered', '890123', NOW() - INTERVAL '6 hours', NOW() - INTERVAL '6 hours', NOW() - INTERVAL '5 hours'),
+-- Additional awaiting_assignment deliveries for testing
+(uuid_generate_v4(), 'iPhone 15 Pro 256GB Natural Titanium', 850000, 3500, 5.2, 'Sophie Nkolo', '+237 677 000 999', 'Nkolbisong, Yaoundé', (SELECT id FROM merchants LIMIT 1), NULL, 'awaiting_assignment', '901234', NOW() - INTERVAL '5 minutes', NOW() - INTERVAL '5 minutes', NULL),
+(uuid_generate_v4(), 'Sony PlayStation 5 Console', 480000, 4200, 6.8, 'Luc Mbarga', '+237 655 000 111', 'Bastos, Yaoundé', (SELECT id FROM merchants LIMIT 1 OFFSET 1), NULL, 'awaiting_assignment', '012345', NOW() - INTERVAL '15 minutes', NOW() - INTERVAL '15 minutes', NULL),
+(uuid_generate_v4(), 'Nike Air Jordan 1 High OG', 95000, 1200, 3.5, 'Emma Nchama', '+237 688 000 222', 'Oyom-Abang, Yaoundé', (SELECT id FROM merchants LIMIT 1 OFFSET 2), NULL, 'awaiting_assignment', '123450', NOW() - INTERVAL '45 minutes', NOW() - INTERVAL '45 minutes', NULL),
+(uuid_generate_v4(), 'MacBook Pro 14-inch M3 Pro', 1250000, 5500, 7.4, 'Arnaud Essomba', '+237 644 000 333', 'Mimboman, Yaoundé', (SELECT id FROM merchants LIMIT 1 OFFSET 3), NULL, 'awaiting_assignment', '234501', NOW() - INTERVAL '1 hour', NOW() - INTERVAL '1 hour', NULL),
+(uuid_generate_v4(), 'Samsung 65-inch Neo QLED 4K TV', 720000, 6000, 8.1, 'Yvette Fouda', '+237 622 000 444', 'Emana, Yaoundé', (SELECT id FROM merchants LIMIT 1 OFFSET 4), NULL, 'awaiting_assignment', '345012', NOW() - INTERVAL '2 hours', NOW() - INTERVAL '2 hours', NULL),
+(uuid_generate_v4(), 'Dyson Airwrap Multi-styler', 385000, 2800, 4.3, 'Kevin Nguemale', '+237 611 000 555', 'Nlongkak, Yaoundé', (SELECT id FROM merchants LIMIT 1 OFFSET 5), NULL, 'awaiting_assignment', '450123', NOW() - INTERVAL '10 minutes', NOW() - INTERVAL '10 minutes', NULL),
+(uuid_generate_v4(), 'iPad Air 5th Gen 256GB', 450000, 3200, 5.6, 'Celine Mba', '+237 699 000 666', 'Mokolo, Yaoundé', (SELECT id FROM merchants LIMIT 1 OFFSET 6), NULL, 'awaiting_assignment', '561234', NOW() - INTERVAL '35 minutes', NOW() - INTERVAL '35 minutes', NULL),
+(uuid_generate_v4(), 'Bose QuietComfort Ultra Headphones', 285000, 2200, 3.9, 'Marc Nkeng', '+237 677 000 777', 'Nkomkana, Yaoundé', (SELECT id FROM merchants LIMIT 1 OFFSET 7), NULL, 'awaiting_assignment', '672345', NOW() - INTERVAL '50 minutes', NOW() - INTERVAL '50 minutes', NULL);
 
 -- Insert payments after deliveries exist
 DO $$
@@ -83,8 +92,15 @@ INSERT INTO rider_expenses (rider_id, category, amount, description, status, cre
 
 -- Insert Sample Notifications
 INSERT INTO notifications (notification_type, title, message, reference_id, is_read, created_at) VALUES
-('new_paid_delivery', 'New Paid Delivery', 'A new delivery has been paid and is awaiting assignment.', (SELECT id FROM deliveries LIMIT 1), false, NOW() - INTERVAL '10 minutes'),
-('failed_delivery', 'Delivery Failed', 'Delivery #89 failed: Customer was unavailable.', (SELECT id FROM deliveries LIMIT 1 OFFSET 6), false, NOW() - INTERVAL '1 hour'),
-('expense_submission', 'Expense Submitted', 'Jean-Baptiste Mba submitted a fuel expense of 15,000 FCFA.', (SELECT id FROM rider_expenses LIMIT 1), true, NOW() - INTERVAL '2 hours'),
-('new_merchant_registration', 'New Merchant', 'A new merchant "Bastos Fashion" has registered.', NULL, true, NOW() - INTERVAL '1 day'),
-('delivery_assigned', 'Delivery Assigned', 'Delivery #123 has been assigned to Pierre Nkongo.', (SELECT id FROM deliveries LIMIT 1 OFFSET 2), true, NOW() - INTERVAL '3 hours');
+('new_paid_delivery', 'New Paid Delivery', 'A new delivery for Samsung Galaxy A54 has been paid and is awaiting assignment.', (SELECT id FROM deliveries LIMIT 1), false, NOW() - INTERVAL '10 minutes'),
+('new_paid_delivery', 'New Paid Delivery', 'A new delivery for Women''s Fashion Dress has been paid and is awaiting assignment.', (SELECT id FROM deliveries LIMIT 1 OFFSET 1), false, NOW() - INTERVAL '25 minutes'),
+('failed_delivery', 'Delivery Failed', 'Delivery to Robert Onana failed: Customer was unavailable at Etoudi address.', (SELECT id FROM deliveries LIMIT 1 OFFSET 6), false, NOW() - INTERVAL '1 hour'),
+('failed_delivery', 'Delivery Failed', 'Delivery to Fabrice Mbah failed: Wrong address provided for Obili.', (SELECT id FROM deliveries LIMIT 1 OFFSET 7), true, NOW() - INTERVAL '4 hours'),
+('expense_submission', 'Expense Submitted', 'Jean-Baptiste Mba submitted a fuel expense of 15,000 FCFA for review.', (SELECT id FROM rider_expenses LIMIT 1), true, NOW() - INTERVAL '2 hours'),
+('expense_submission', 'Expense Approved', 'Fuel expense for 12,000 FCFA has been approved for Pierre Nkongo.', (SELECT id FROM rider_expenses LIMIT 1 OFFSET 2), false, NOW() - INTERVAL '30 minutes'),
+('new_merchant_registration', 'New Merchant Registered', 'A new merchant "Bastos Fashion" has completed registration.', (SELECT id FROM merchants LIMIT 1 OFFSET 1), true, NOW() - INTERVAL '1 day'),
+('new_merchant_registration', 'New Merchant Registered', 'A new merchant "Mvog-Mbi Market" has completed registration.', (SELECT id FROM merchants LIMIT 1 OFFSET 2), false, NOW() - INTERVAL '2 hours'),
+('delivery_assigned', 'Delivery Assigned', 'Delivery for Samsung Galaxy A54 has been assigned to Jean-Baptiste Mba.', (SELECT id FROM deliveries LIMIT 1 OFFSET 2), true, NOW() - INTERVAL '3 hours'),
+('delivery_assigned', 'Delivery Picked Up', 'Pharmacy delivery has been picked up by Pierre Nkongo and is now in transit.', (SELECT id FROM deliveries LIMIT 1 OFFSET 3), false, NOW() - INTERVAL '45 minutes'),
+('new_rider_registration', 'New Rider Registration', 'Marie Atangana has completed rider registration and is awaiting approval.', (SELECT id FROM riders LIMIT 1 OFFSET 2), false, NOW() - INTERVAL '1 hour'),
+('new_rider_registration', 'New Rider Registration', 'Paul Essama has completed rider registration and is awaiting approval.', (SELECT id FROM riders LIMIT 1 OFFSET 3), true, NOW() - INTERVAL '5 hours');

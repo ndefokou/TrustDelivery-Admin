@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useDelivery, useRiders, useAssignRider, useCancelDelivery } from '../hooks/useApi'
+import { useDelivery, useRiders, useAssignRider, useCancelDelivery, useRider, useMerchant } from '../hooks/useApi'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { Select } from '../components/ui/Input'
@@ -14,6 +14,8 @@ export default function DeliveryDetails() {
   const navigate = useNavigate()
   const { data: delivery, isLoading } = useDelivery(id!)
   const { data: riders } = useRiders()
+  const { data: merchant } = useMerchant(delivery?.merchant_id || '')
+  const { data: rider } = useRider(delivery?.assigned_rider_id || '')
   const assignRider = useAssignRider()
   const cancelDelivery = useCancelDelivery()
 
@@ -193,9 +195,9 @@ export default function DeliveryDetails() {
               <CardTitle>Merchant</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="font-medium">Merchant Name</p>
-              <p className="text-sm text-gray-500">merchant@example.com</p>
-              <p className="text-sm text-gray-500">+237 6XX XXX XXX</p>
+              <p className="font-medium">{merchant?.business_name || 'Merchant Name'}</p>
+              <p className="text-sm text-gray-500">{merchant?.email || 'merchant@example.com'}</p>
+              <p className="text-sm text-gray-500">{merchant?.phone_number || '+237 6XX XXX XXX'}</p>
             </CardContent>
           </Card>
 
@@ -210,8 +212,8 @@ export default function DeliveryDetails() {
                     <User size={24} className="text-white" />
                   </div>
                   <div>
-                    <p className="font-medium">Rider Name</p>
-                    <p className="text-sm text-gray-500">+237 6XX XXX XXX</p>
+                    <p className="font-medium">{rider?.full_name || 'Rider Name'}</p>
+                    <p className="text-sm text-gray-500">{rider?.phone_number || '+237 6XX XXX XXX'}</p>
                   </div>
                 </div>
                 <div className="mt-4">
@@ -231,11 +233,6 @@ export default function DeliveryDetails() {
             <CardContent className="space-y-2">
               {delivery.status === 'awaiting_assignment' && (
                 <Button className="w-full" onClick={() => setShowAssignModal(true)}>Assign Rider</Button>
-              )}
-              {delivery.status === 'in_transit' && (
-                <Button className="w-full" variant="success" onClick={() => alert('Deliveries can only be marked as delivered by the assigned rider via the mobile app.')}>
-                  Mark as Delivered
-                </Button>
               )}
               <Button className="w-full" variant="secondary" onClick={() => window.print()}>Print Receipt</Button>
               <Button className="w-full" variant="danger" disabled={delivery.status === 'delivered' || cancelDelivery.isPending} onClick={handleCancel}>

@@ -226,7 +226,7 @@ pub struct ExpenseWithRider {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type)]
-#[sqlx(type_name = "text")]
+#[sqlx(type_name = "notification_type", rename_all = "snake_case")]
 pub enum NotificationType {
     #[serde(rename = "new_paid_delivery")]
     NewPaidDelivery,

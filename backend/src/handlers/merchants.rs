@@ -68,7 +68,20 @@ pub async fn create_merchant(
     .await;
 
     match merchant {
-        Ok(m) => Ok(HttpResponse::Created().json(m)),
+        Ok(m) => {
+            // Create notification for new merchant registration
+            let _ = sqlx::query(
+                "INSERT INTO notifications (notification_type, title, message, reference_id, is_read, created_at) VALUES ($1::notification_type, $2, $3, $4, false, NOW())"
+            )
+            .bind("new_merchant_registration")
+            .bind("New Merchant Registered")
+            .bind(format!("{} has completed merchant registration.", m.business_name))
+            .bind(m.id)
+            .execute(state.db.as_ref())
+            .await;
+
+            Ok(HttpResponse::Created().json(m))
+        },
         _ => Ok(HttpResponse::BadRequest().json(serde_json::json!({
             "error": "Failed to create merchant"
         }))),
@@ -116,7 +129,19 @@ pub async fn suspend_merchant(
     .await;
 
     match merchant {
-        Ok(m) => Ok(HttpResponse::Ok().json(m)),
+        Ok(m) => {
+            let _ = sqlx::query(
+                "INSERT INTO notifications (notification_type, title, message, reference_id, is_read, created_at) VALUES ($1::notification_type, $2, $3, $4, false, NOW())"
+            )
+            .bind("new_merchant_registration")
+            .bind("Merchant Suspended")
+            .bind(format!("Merchant {} has been suspended by admin.", m.business_name))
+            .bind(m.id)
+            .execute(state.db.as_ref())
+            .await;
+
+            Ok(HttpResponse::Ok().json(m))
+        },
         _ => Ok(HttpResponse::NotFound().json(serde_json::json!({
             "error": "Merchant not found"
         }))),
@@ -137,7 +162,19 @@ pub async fn activate_merchant(
     .await;
 
     match merchant {
-        Ok(m) => Ok(HttpResponse::Ok().json(m)),
+        Ok(m) => {
+            let _ = sqlx::query(
+                "INSERT INTO notifications (notification_type, title, message, reference_id, is_read, created_at) VALUES ($1::notification_type, $2, $3, $4, false, NOW())"
+            )
+            .bind("new_merchant_registration")
+            .bind("Merchant Activated")
+            .bind(format!("Merchant {} has been activated by admin.", m.business_name))
+            .bind(m.id)
+            .execute(state.db.as_ref())
+            .await;
+
+            Ok(HttpResponse::Ok().json(m))
+        },
         _ => Ok(HttpResponse::NotFound().json(serde_json::json!({
             "error": "Merchant not found"
         }))),

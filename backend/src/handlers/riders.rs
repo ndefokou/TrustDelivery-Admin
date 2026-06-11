@@ -70,7 +70,20 @@ pub async fn create_rider(
     .await;
 
     match rider {
-        Ok(r) => Ok(HttpResponse::Created().json(r)),
+        Ok(r) => {
+            // Create notification for new rider registration
+            let _ = sqlx::query(
+                "INSERT INTO notifications (notification_type, title, message, reference_id, is_read, created_at) VALUES ($1::notification_type, $2, $3, $4, false, NOW())"
+            )
+            .bind("new_rider_registration")
+            .bind("New Rider Registration")
+            .bind(format!("{} has completed rider registration and is awaiting approval.", r.full_name))
+            .bind(r.id)
+            .execute(state.db.as_ref())
+            .await;
+
+            Ok(HttpResponse::Created().json(r))
+        },
         Err(e) => {
             log::error!("Failed to create rider: {}", e);
             let error_msg = e.to_string();
@@ -130,7 +143,19 @@ pub async fn suspend_rider(
     .await;
 
     match rider {
-        Ok(r) => Ok(HttpResponse::Ok().json(r)),
+        Ok(r) => {
+            let _ = sqlx::query(
+                "INSERT INTO notifications (notification_type, title, message, reference_id, is_read, created_at) VALUES ($1::notification_type, $2, $3, $4, false, NOW())"
+            )
+            .bind("new_rider_registration")
+            .bind("Rider Suspended")
+            .bind(format!("Rider {} has been suspended by admin.", r.full_name))
+            .bind(r.id)
+            .execute(state.db.as_ref())
+            .await;
+
+            Ok(HttpResponse::Ok().json(r))
+        },
         _ => Ok(HttpResponse::NotFound().json(serde_json::json!({
             "error": "Rider not found"
         }))),
@@ -151,7 +176,19 @@ pub async fn activate_rider(
     .await;
 
     match rider {
-        Ok(r) => Ok(HttpResponse::Ok().json(r)),
+        Ok(r) => {
+            let _ = sqlx::query(
+                "INSERT INTO notifications (notification_type, title, message, reference_id, is_read, created_at) VALUES ($1::notification_type, $2, $3, $4, false, NOW())"
+            )
+            .bind("new_rider_registration")
+            .bind("Rider Activated")
+            .bind(format!("Rider {} has been activated by admin.", r.full_name))
+            .bind(r.id)
+            .execute(state.db.as_ref())
+            .await;
+
+            Ok(HttpResponse::Ok().json(r))
+        },
         _ => Ok(HttpResponse::NotFound().json(serde_json::json!({
             "error": "Rider not found"
         }))),
@@ -203,7 +240,20 @@ pub async fn create_expense(
     .await;
 
     match expense {
-        Ok(e) => Ok(HttpResponse::Created().json(e)),
+        Ok(e) => {
+            // Create notification for expense submission
+            let _ = sqlx::query(
+                "INSERT INTO notifications (notification_type, title, message, reference_id, is_read, created_at) VALUES ($1::notification_type, $2, $3, $4, false, NOW())"
+            )
+            .bind("expense_submission")
+            .bind("New Expense Submitted")
+            .bind(format!("An expense of {} FCFA for {} has been submitted for review.", e.amount, e.description))
+            .bind(e.id)
+            .execute(state.db.as_ref())
+            .await;
+
+            Ok(HttpResponse::Created().json(e))
+        },
         _ => Ok(HttpResponse::BadRequest().json(serde_json::json!({
             "error": "Failed to create expense"
         }))),
@@ -227,11 +277,36 @@ pub async fn review_expense(
     .await;
 
     match expense {
-        Ok(e) => Ok(HttpResponse::Ok().json(e)),
+        Ok(e) => {
+            let _ = sqlx::query(
+                "INSERT INTO notifications (notification_type, title, message, reference_id, is_read, created_at) VALUES ($1::notification_type, $2, $3, $4, false, NOW())"
+            )
+            .bind("expense_submission")
+            .bind("Expense Reviewed")
+            .bind(format!("An expense has been reviewed and marked as {}.", serde_json::to_string(&e.status).unwrap_or_default().trim_matches('"')))
+            .bind(e.id)
+            .execute(state.db.as_ref())
+            .await;
+
+            Ok(HttpResponse::Ok().json(e))
+        },
         _ => Ok(HttpResponse::NotFound().json(serde_json::json!({
             "error": "Expense not found"
         }))),
     }
+}
+
+pub async fn rider_performance(
+    state: web::Data<AppState>,
+) -> Result<HttpResponse, Error> {
+    let riders = sqlx::query_as::<_, crate::models::TopRider>(
+        "SELECT ROW_NUMBER() OVER (ORDER BY completed_deliveries DESC) as rank, full_name as rider_name, completed_deliveries as deliveries_completed, CASE WHEN total_deliveries > 0 THEN (completed_deliveries::float8 / total_deliveries::float8) * 100 ELSE 0 END as success_rate, total_revenue::float8 as revenue_generated FROM riders WHERE total_deliveries > 0 ORDER BY completed_deliveries DESC LIMIT 8"
+    )
+    .fetch_all(state.db.as_ref())
+    .await
+    .unwrap_or_default();
+
+    Ok(HttpResponse::Ok().json(riders))
 }
 
 pub fn routes() -> actix_web::Scope {
@@ -242,6 +317,7 @@ pub fn routes() -> actix_web::Scope {
         .route("/{id}", web::put().to(update_rider))
         .route("/{id}/suspend", web::post().to(suspend_rider))
         .route("/{id}/activate", web::post().to(activate_rider))
+        .route("/performance", web::get().to(rider_performance))
         .route("/expenses", web::get().to(list_all_expenses))
         .route("/{id}/expenses", web::get().to(list_expenses))
         .route("/expenses", web::post().to(create_expense))

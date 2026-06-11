@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useSettings, useUpdateSettings } from '../hooks/useApi'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
@@ -7,7 +7,7 @@ import { Save, Building, DollarSign, Users } from 'lucide-react'
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState('company')
-  useSettings()
+  const { data: settingsData, isLoading } = useSettings()
   const updateSettings = useUpdateSettings()
 
   const [companySettings, setCompanySettings] = useState({
@@ -23,6 +23,25 @@ export default function Settings() {
     { min_distance_km: 5, max_distance_km: 10, base_price: 2500, price_per_km: null },
     { min_distance_km: 10, max_distance_km: 999, base_price: 3000, price_per_km: 200 },
   ])
+
+  useEffect(() => {
+    if (settingsData?.company) {
+      setCompanySettings({
+        company_name: settingsData.company.company_name || 'TrustDelivery',
+        address: settingsData.company.address || '',
+        phone: settingsData.company.phone || '',
+        email: settingsData.company.email || '',
+      })
+    }
+    if (settingsData?.pricing_rules) {
+      setPricingRules(
+        settingsData.pricing_rules.map((r) => ({
+          ...r,
+          price_per_km: r.price_per_km ?? null,
+        }))
+      )
+    }
+  }, [settingsData])
 
   const handleSaveCompany = () => {
     updateSettings.mutate({
@@ -46,6 +65,17 @@ export default function Settings() {
     { id: 'pricing', label: 'Pricing', icon: DollarSign },
     { id: 'users', label: 'User Management', icon: Users },
   ]
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Settings</h1>
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-secondary"></div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
