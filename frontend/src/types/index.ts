@@ -4,7 +4,7 @@ export type RiderStatus = 'active' | 'offline' | 'busy' | 'suspended'
 
 export type MerchantStatus = 'active' | 'suspended' | 'pending'
 
-export type PaymentMethod = 'orange_money' | 'mtn_mobile_money' | 'bank_transfer'
+export type PaymentMethod = 'orange_money' | 'mtn_momo' | 'merchant_wallet' | 'mtn_mobile_money' | 'bank_transfer'
 
 export type PaymentStatus = 'pending' | 'completed' | 'failed' | 'refunded'
 

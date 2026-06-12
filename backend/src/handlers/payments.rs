@@ -5,7 +5,7 @@ use uuid::Uuid;
 
 pub async fn list_payments(
     state: web::Data<AppState>,
-    _query: web::Json<crate::models::PaymentFilter>,
+    _query: web::Query<crate::models::PaymentFilter>,
 ) -> Result<HttpResponse, Error> {
     let page: i64 = 1;
     let per_page: i64 = 20;

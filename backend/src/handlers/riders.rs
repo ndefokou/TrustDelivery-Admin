@@ -91,8 +91,6 @@ pub async fn create_rider(
                 "A rider with this phone number already exists"
             } else if error_msg.contains("riders_national_id_key") {
                 "A rider with this national ID already exists"
-            } else if error_msg.contains("riders_motorbike_registration_key") {
-                "A rider with this motorbike registration already exists"
             } else {
                 "Failed to create rider"
             };

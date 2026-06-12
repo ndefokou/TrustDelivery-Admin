@@ -53,7 +53,9 @@ export default function Merchants() {
   }
 
   const listData = merchants?.merchants || []
-  const activityData = [...listData].sort((a: any, b: any) => b.total_deliveries - a.total_deliveries)
+  const activityData = [...listData].sort(
+    (a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  )
 
   return (
     <div className="space-y-6">

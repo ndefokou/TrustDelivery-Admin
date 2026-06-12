@@ -9,11 +9,11 @@ pub struct MerchantService;
 impl MerchantService {
     pub async fn get_active_merchants(pool: &PgPool) -> Result<Vec<Merchant>, sqlx::Error> {
         let merchants = sqlx::query_as::<_, Merchant>(
-            "SELECT id, business_name, owner_name, email, phone_number, address, status, total_deliveries, total_revenue, active_deliveries, created_at, updated_at FROM merchants WHERE status = 'active' ORDER BY created_at DESC"
+            "SELECT id, business_name, owner_name, email, business_phone AS \"phone_number\", business_address AS address, status, total_deliveries, total_revenue::float8, active_deliveries, created_at, updated_at FROM merchants WHERE status = 'active' ORDER BY created_at DESC"
         )
         .fetch_all(pool)
         .await;
-        
+
         merchants
     }
 

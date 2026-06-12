@@ -9,7 +9,7 @@ pub struct AppState {
 impl AppState {
     pub async fn new(database_url: &str) -> Self {
         let pool = PgPoolOptions::new()
-            .max_connections(10)
+            .max_connections(2)
             .connect(database_url)
             .await
             .expect("Failed to connect to database");

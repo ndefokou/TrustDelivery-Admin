@@ -49,7 +49,7 @@ pub async fn get_delivery(
     match delivery {
         Ok(Some(del)) => {
             let merchant = sqlx::query_as::<_, MerchantBasic>(
-                "SELECT id, business_name, contact_phone, email FROM merchants WHERE id = $1",
+                "SELECT id, business_name, business_phone AS contact_phone, email FROM merchants WHERE id = $1",
             )
             .bind(del.merchant_id)
             .fetch_optional(state.db.as_ref())

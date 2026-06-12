@@ -111,7 +111,7 @@ pub struct Merchant {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type)]
-#[sqlx(type_name = "text")]
+#[sqlx(type_name = "user_role", rename_all = "snake_case")]
 pub enum UserRole {
     #[serde(rename = "admin")]
     Admin,
@@ -133,10 +133,14 @@ pub struct User {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type)]
-#[sqlx(type_name = "text")]
+#[sqlx(type_name = "payment_method", rename_all = "snake_case")]
 pub enum PaymentMethod {
     #[serde(rename = "orange_money")]
     OrangeMoney,
+    #[serde(rename = "mtn_momo")]
+    MtnMomo,
+    #[serde(rename = "merchant_wallet")]
+    MerchantWallet,
     #[serde(rename = "mtn_mobile_money")]
     MtnMobileMoney,
     #[serde(rename = "bank_transfer")]
@@ -144,7 +148,7 @@ pub enum PaymentMethod {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type)]
-#[sqlx(type_name = "text")]
+#[sqlx(type_name = "payment_status", rename_all = "lowercase")]
 pub enum PaymentStatus {
     #[serde(rename = "pending")]
     Pending,

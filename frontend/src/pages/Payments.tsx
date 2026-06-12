@@ -11,13 +11,17 @@ import { format } from 'date-fns'
 
 const paymentMethodIcons: Record<string, React.ReactNode> = {
   orange_money: <Smartphone size={16} className="text-warning" />,
+  mtn_momo: <Smartphone size={16} className="text-danger" />,
   mtn_mobile_money: <Smartphone size={16} className="text-danger" />,
+  merchant_wallet: <CreditCard size={16} className="text-primary" />,
   bank_transfer: <Building size={16} className="text-secondary" />,
 }
 
 const paymentMethodLabels: Record<string, string> = {
   orange_money: 'Orange Money',
+  mtn_momo: 'MTN Mobile Money',
   mtn_mobile_money: 'MTN Mobile Money',
+  merchant_wallet: 'Merchant Wallet',
   bank_transfer: 'Bank Transfer',
 }
 
