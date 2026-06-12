@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { useDeliveries, useRiders, useAssignRider, useMerchants } from '../hooks/useApi'
+import { useDeliveries, useRiders, useAssignRider, useMerchants, useCreateDelivery } from '../hooks/useApi'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { Input, Select } from '../components/ui/Input'
 import { Table, Thead, Tbody, Tr, Th, Td } from '../components/ui/Table'
 import { StatusBadge } from '../components/ui/Badge'
 import { Modal } from '../components/ui/Modal'
-import { Eye, UserPlus, Search, Printer } from 'lucide-react'
+import { Eye, UserPlus, Search, Printer, Plus } from 'lucide-react'
 import { format } from 'date-fns'
 
 export default function Deliveries() {
@@ -21,22 +21,35 @@ export default function Deliveries() {
     date_to: '',
     merchant: '',
     rider: '',
+    page: 1,
+    per_page: 20,
   })
 
   // Sync status filter when URL query param changes (e.g. sidebar links)
   useEffect(() => {
     const status = searchParams.get('status') || ''
-    setFilters((prev) => (prev.status === status ? prev : { ...prev, status }))
+    setFilters((prev) => (prev.status === status ? prev : { ...prev, status, page: 1 }))
   }, [searchParams])
   const [showFilters, setShowFilters] = useState(false)
   const [showAssignModal, setShowAssignModal] = useState(false)
+  const [showCreateModal, setShowCreateModal] = useState(false)
   const [selectedDelivery, setSelectedDelivery] = useState<string | null>(null)
   const [selectedRider, setSelectedRider] = useState('')
+  const [createForm, setCreateForm] = useState({
+    product_description: '',
+    product_value: 0,
+    distance_km: 0,
+    customer_name: '',
+    customer_phone: '',
+    delivery_address: '',
+    merchant_id: '',
+  })
 
-  const { data: deliveries, isLoading } = useDeliveries(filters)
+  const { data: deliveries, isLoading, error: deliveriesError } = useDeliveries(filters)
   const { data: riders } = useRiders()
   const { data: merchantsData } = useMerchants()
   const assignRider = useAssignRider()
+  const createDelivery = useCreateDelivery()
 
   const getMerchantName = (merchantId: string) => {
     const merchant = merchantsData?.merchants?.find((m: any) => m.id === merchantId)
@@ -64,6 +77,29 @@ export default function Deliveries() {
     }
   }
 
+  const handlePrevPage = () => setFilters((prev) => ({ ...prev, page: Math.max(1, prev.page - 1) }))
+  const handleNextPage = () => {
+    if (deliveries && deliveries.total > filters.page * filters.per_page) {
+      setFilters((prev) => ({ ...prev, page: prev.page + 1 }))
+    }
+  }
+
+  const handleCreateDelivery = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!createForm.merchant_id) return
+    try {
+      await createDelivery.mutateAsync({
+        ...createForm,
+        product_value: Number(createForm.product_value),
+        distance_km: Number(createForm.distance_km),
+      })
+      setShowCreateModal(false)
+      setCreateForm({ product_description: '', product_value: 0, distance_km: 0, customer_name: '', customer_phone: '', delivery_address: '', merchant_id: '' })
+    } catch (error) {
+      console.error('Failed to create delivery:', error)
+    }
+  }
+
   const handlePrint = () => {
     window.print()
   }
@@ -72,10 +108,23 @@ export default function Deliveries() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Deliveries</h1>
-        <Button onClick={() => setShowFilters(!showFilters)}>
-          Search
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="secondary" onClick={() => setShowFilters(!showFilters)}>
+            <Search size={16} />
+            Search
+          </Button>
+          <Button onClick={() => setShowCreateModal(true)}>
+            <Plus size={16} />
+            Create
+          </Button>
+        </div>
       </div>
+
+      {deliveriesError && (
+        <div className="p-3 bg-red-100 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-md text-red-700 dark:text-red-400 text-sm">
+          {(deliveriesError as any)?.response?.data?.error || 'Failed to load deliveries. Check backend logs.'}
+        </div>
+      )}
 
       {showFilters && (
         <Card>
@@ -211,8 +260,8 @@ export default function Deliveries() {
                 Showing {deliveries.deliveries?.length || 0} of {deliveries.total || 0} deliveries
               </p>
               <div className="flex gap-2">
-                <Button variant="secondary" size="sm">Previous</Button>
-                <Button variant="secondary" size="sm">Next</Button>
+                <Button variant="secondary" size="sm" onClick={handlePrevPage} disabled={filters.page <= 1}>Previous</Button>
+                <Button variant="secondary" size="sm" onClick={handleNextPage} disabled={!deliveries || deliveries.total <= filters.page * filters.per_page}>Next</Button>
               </div>
             </div>
           )}
@@ -247,6 +296,78 @@ export default function Deliveries() {
             </Button>
           </div>
         </div>
+      </Modal>
+
+      <Modal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        title="Create Delivery"
+        size="lg"
+      >
+        <form onSubmit={handleCreateDelivery} className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input
+              label="Product Description"
+              value={createForm.product_description}
+              onChange={(e) => setCreateForm({ ...createForm, product_description: e.target.value })}
+              required
+            />
+            <Input
+              label="Product Value (FCFA)"
+              type="number"
+              value={createForm.product_value}
+              onChange={(e) => setCreateForm({ ...createForm, product_value: Number(e.target.value) })}
+              required
+            />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input
+              label="Distance (km)"
+              type="number"
+              step="0.1"
+              value={createForm.distance_km}
+              onChange={(e) => setCreateForm({ ...createForm, distance_km: Number(e.target.value) })}
+              required
+            />
+            <Select
+              label="Merchant"
+              value={createForm.merchant_id}
+              onChange={(e) => setCreateForm({ ...createForm, merchant_id: e.target.value })}
+              required
+            >
+              <option value="">Select merchant...</option>
+              {merchantsData?.merchants?.map((m: any) => (
+                <option key={m.id} value={m.id}>{m.business_name}</option>
+              ))}
+            </Select>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input
+              label="Customer Name"
+              value={createForm.customer_name}
+              onChange={(e) => setCreateForm({ ...createForm, customer_name: e.target.value })}
+              required
+            />
+            <Input
+              label="Customer Phone"
+              value={createForm.customer_phone}
+              onChange={(e) => setCreateForm({ ...createForm, customer_phone: e.target.value })}
+              required
+            />
+          </div>
+          <Input
+            label="Delivery Address"
+            value={createForm.delivery_address}
+            onChange={(e) => setCreateForm({ ...createForm, delivery_address: e.target.value })}
+            required
+          />
+          <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end">
+            <Button type="button" variant="secondary" onClick={() => setShowCreateModal(false)}>Cancel</Button>
+            <Button type="submit" disabled={createDelivery.isPending}>
+              {createDelivery.isPending ? 'Creating...' : 'Create Delivery'}
+            </Button>
+          </div>
+        </form>
       </Modal>
     </div>
   )

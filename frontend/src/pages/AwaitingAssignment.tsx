@@ -15,7 +15,7 @@ export default function AwaitingAssignment() {
   const [selectedDelivery, setSelectedDelivery] = useState<string | null>(null)
   const [selectedRider, setSelectedRider] = useState('')
 
-  const { data: deliveries, isLoading } = useAwaitingDeliveries()
+  const { data: deliveries, isLoading, error: deliveriesError } = useAwaitingDeliveries()
   const { data: riders } = useRiders()
   const { data: merchantsData } = useMerchants()
   const assignRider = useAssignRider()
@@ -92,6 +92,12 @@ export default function AwaitingAssignment() {
           )}
         </div>
       </div>
+
+      {deliveriesError && (
+        <div className="p-3 bg-red-100 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-md text-red-700 dark:text-red-400 text-sm">
+          {(deliveriesError as any)?.response?.data?.error || 'Failed to load deliveries. Check backend logs.'}
+        </div>
+      )}
 
       <FloatingActionButton
         variant="primary"

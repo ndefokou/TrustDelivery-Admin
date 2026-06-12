@@ -71,6 +71,30 @@ export function useAssignRider() {
   })
 }
 
+export function useCreateDelivery() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (payload: {
+      product_description: string
+      product_value: number
+      distance_km: number
+      customer_name: string
+      customer_phone: string
+      delivery_address: string
+      delivery_lat?: number
+      delivery_lng?: number
+      merchant_id: string
+    }) => {
+      const { data } = await api.post('/deliveries', payload)
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['deliveries'], exact: false })
+      queryClient.invalidateQueries({ queryKey: ['delivery'], exact: false })
+    },
+  })
+}
+
 export function useCancelDelivery() {
   const queryClient = useQueryClient()
   return useMutation({

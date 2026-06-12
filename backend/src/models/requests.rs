@@ -32,10 +32,13 @@ pub struct AssignRiderRequest {
 pub struct DeliveryFilter {
     pub status: Option<String>,
     pub merchant_id: Option<Uuid>,
+    pub merchant: Option<String>,
     pub rider_id: Option<Uuid>,
-    pub date_from: Option<DateTime<Utc>>,
-    pub date_to: Option<DateTime<Utc>>,
+    pub date_from: Option<String>,
+    pub date_to: Option<String>,
     pub search: Option<String>,
+    pub page: Option<i32>,
+    pub per_page: Option<i32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

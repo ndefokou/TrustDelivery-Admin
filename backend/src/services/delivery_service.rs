@@ -2,6 +2,8 @@ use sqlx::PgPool;
 use crate::models::Delivery;
 use uuid::Uuid;
 
+const DELIVERY_SELECT: &str = "id, product_description, product_value::float8 AS product_value, delivery_cost::float8 AS delivery_cost, distance_km, customer_name, customer_phone, delivery_address_text AS delivery_address, NULL::float8 AS delivery_lat, NULL::float8 AS delivery_lng, merchant_id, assigned_rider_id, status, failure_reason::text AS failure_reason, otp_code, otp_verified, created_at, NULL::timestamptz AS paid_at, assigned_at, picked_up_at, delivered_at, NULL::timestamptz AS failed_at";
+
 #[allow(dead_code)]
 pub struct DeliveryService;
 
@@ -21,7 +23,7 @@ impl DeliveryService {
 
     pub async fn assign_rider(delivery_id: Uuid, rider_id: Uuid, pool: &PgPool) -> Result<Delivery, sqlx::Error> {
         let delivery = sqlx::query_as::<_, Delivery>(
-            "UPDATE deliveries SET assigned_rider_id = $1, status = 'assigned', assigned_at = NOW() WHERE id = $2 RETURNING id, product_description, product_value, delivery_cost, distance_km, customer_name, customer_phone, delivery_address, delivery_lat, delivery_lng, merchant_id, assigned_rider_id, status, failure_reason, otp_code, otp_verified, created_at, paid_at, assigned_at, picked_up_at, delivered_at, failed_at",
+            &format!("UPDATE deliveries SET assigned_rider_id = $1, status = 'assigned', assigned_at = NOW() WHERE id = $2 RETURNING {}", DELIVERY_SELECT),
         )
         .bind(rider_id)
         .bind(delivery_id)
@@ -33,7 +35,7 @@ impl DeliveryService {
 
     pub async fn mark_in_transit(delivery_id: Uuid, pool: &PgPool) -> Result<Delivery, sqlx::Error> {
         let delivery = sqlx::query_as::<_, Delivery>(
-            "UPDATE deliveries SET status = 'in_transit', picked_up_at = NOW() WHERE id = $1 RETURNING id, product_description, product_value, delivery_cost, distance_km, customer_name, customer_phone, delivery_address, delivery_lat, delivery_lng, merchant_id, assigned_rider_id, status, failure_reason, otp_code, otp_verified, created_at, paid_at, assigned_at, picked_up_at, delivered_at, failed_at",
+            &format!("UPDATE deliveries SET status = 'in_transit', picked_up_at = NOW() WHERE id = $1 RETURNING {}", DELIVERY_SELECT),
         )
         .bind(delivery_id)
         .fetch_one(pool)
@@ -44,7 +46,7 @@ impl DeliveryService {
 
     pub async fn mark_delivered(delivery_id: Uuid, pool: &PgPool) -> Result<Delivery, sqlx::Error> {
         let delivery = sqlx::query_as::<_, Delivery>(
-            "UPDATE deliveries SET status = 'delivered', delivered_at = NOW() WHERE id = $1 RETURNING id, product_description, product_value, delivery_cost, distance_km, customer_name, customer_phone, delivery_address, delivery_lat, delivery_lng, merchant_id, assigned_rider_id, status, failure_reason, otp_code, otp_verified, created_at, paid_at, assigned_at, picked_up_at, delivered_at, failed_at",
+            &format!("UPDATE deliveries SET status = 'delivered', delivered_at = NOW() WHERE id = $1 RETURNING {}", DELIVERY_SELECT),
         )
         .bind(delivery_id)
         .fetch_one(pool)

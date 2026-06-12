@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type)]
-#[sqlx(type_name = "delivery_status", rename_all = "lowercase")]
+#[sqlx(type_name = "delivery_status", rename_all = "snake_case")]
 pub enum DeliveryStatus {
     #[serde(rename = "awaiting_assignment")]
     AwaitingAssignment,
@@ -50,7 +50,7 @@ pub struct Delivery {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type)]
-#[sqlx(type_name = "rider_status", rename_all = "lowercase")]
+#[sqlx(type_name = "rider_status", rename_all = "snake_case")]
 pub enum RiderStatus {
     #[serde(rename = "active")]
     Active,
@@ -84,7 +84,7 @@ pub struct Rider {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type)]
-#[sqlx(type_name = "merchant_status", rename_all = "lowercase")]
+#[sqlx(type_name = "merchant_status", rename_all = "snake_case")]
 pub enum MerchantStatus {
     #[serde(rename = "active")]
     Active,
@@ -148,7 +148,7 @@ pub enum PaymentMethod {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type)]
-#[sqlx(type_name = "payment_status", rename_all = "lowercase")]
+#[sqlx(type_name = "payment_status", rename_all = "snake_case")]
 pub enum PaymentStatus {
     #[serde(rename = "pending")]
     Pending,
@@ -175,7 +175,7 @@ pub struct Payment {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type)]
-#[sqlx(type_name = "expense_category", rename_all = "lowercase")]
+#[sqlx(type_name = "expense_category", rename_all = "snake_case")]
 pub enum ExpenseCategory {
     #[serde(rename = "fuel")]
     Fuel,
@@ -188,7 +188,7 @@ pub enum ExpenseCategory {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type)]
-#[sqlx(type_name = "expense_status", rename_all = "lowercase")]
+#[sqlx(type_name = "expense_status", rename_all = "snake_case")]
 pub enum ExpenseStatus {
     #[serde(rename = "pending")]
     Pending,

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useMerchant, useSuspendMerchant, useActivateMerchant, useUpdateMerchant } from '../hooks/useApi'
+import { useMerchant, useSuspendMerchant, useActivateMerchant, useUpdateMerchant, useDeliveries } from '../hooks/useApi'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
@@ -9,11 +9,13 @@ import { Table, Thead, Tbody, Tr, Th, Td } from '../components/ui/Table'
 import { Modal } from '../components/ui/Modal'
 import { ArrowLeft, Store, Mail, Phone, MapPin, Package, DollarSign, TrendingUp } from 'lucide-react'
 import { AxiosError } from 'axios'
+import { format } from 'date-fns'
 
 export default function MerchantDetails() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { data: merchant, isLoading } = useMerchant(id!)
+  const { data: deliveriesData, isLoading: deliveriesLoading } = useDeliveries({ merchant_id: id!, per_page: 10 })
   const suspendMerchant = useSuspendMerchant()
   const activateMerchant = useActivateMerchant()
   const updateMerchant = useUpdateMerchant()
@@ -143,11 +145,36 @@ export default function MerchantDetails() {
                   </Tr>
                 </Thead>
                 <Tbody>
-                  <Tr>
-                    <Td colSpan={5} className="text-center py-8 text-gray-500">
-                      No recent deliveries
-                    </Td>
-                  </Tr>
+                  {deliveriesLoading ? (
+                    <Tr>
+                      <Td colSpan={5} className="text-center py-8">
+                        <div className="flex items-center justify-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-secondary"></div>
+                        </div>
+                      </Td>
+                    </Tr>
+                  ) : deliveriesData?.deliveries?.length === 0 ? (
+                    <Tr>
+                      <Td colSpan={5} className="text-center py-8 text-gray-500">
+                        No recent deliveries
+                      </Td>
+                    </Tr>
+                  ) : (
+                    deliveriesData?.deliveries?.map((delivery: any) => (
+                      <Tr key={delivery.id} className="cursor-pointer" onClick={() => navigate(`/deliveries/${delivery.id}`)}>
+                        <Td className="font-mono text-xs">{delivery.id.slice(0, 8)}</Td>
+                        <Td>
+                          <div>
+                            <p className="font-medium">{delivery.customer_name}</p>
+                            <p className="text-xs text-gray-500">{delivery.customer_phone}</p>
+                          </div>
+                        </Td>
+                        <Td className="font-medium">{delivery.delivery_cost.toLocaleString()} FCFA</Td>
+                        <Td>{format(new Date(delivery.created_at), 'MMM dd, yyyy')}</Td>
+                        <Td><StatusBadge status={delivery.status} /></Td>
+                      </Tr>
+                    ))
+                  )}
                 </Tbody>
               </Table>
             </CardContent>
