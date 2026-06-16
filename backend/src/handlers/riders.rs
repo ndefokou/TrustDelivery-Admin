@@ -11,7 +11,7 @@ pub async fn list_riders(
     let per_page: i64 = 20;
     
     let riders = sqlx::query_as::<_, Rider>(
-        "SELECT id, full_name, phone_number, national_id, address, motorbike_registration, profile_photo, status, current_lat::float8, current_lng::float8, total_deliveries, completed_deliveries, failed_deliveries, performance_score::float8, total_revenue::float8, created_at, updated_at FROM riders ORDER BY created_at DESC LIMIT $1 OFFSET $2",
+        "SELECT id, full_name, phone AS phone_number, COALESCE(national_id, '') AS national_id, '' AS address, COALESCE(motorbike_plate, '') AS motorbike_registration, profile_photo_url AS profile_photo, CASE WHEN is_active THEN 'active'::rider_status ELSE 'suspended'::rider_status END AS status, NULL::float8 AS current_lat, NULL::float8 AS current_lng, 0 AS total_deliveries, 0 AS completed_deliveries, 0 AS failed_deliveries, 0.0::float8 AS performance_score, 0.0::float8 AS total_revenue, created_at, COALESCE(updated_at, created_at) AS updated_at FROM riders ORDER BY created_at DESC LIMIT $1 OFFSET $2",
     )
     .bind(per_page)
     .bind((page - 1) * per_page)
@@ -39,7 +39,7 @@ pub async fn get_rider(
     let id = path.into_inner();
     
     let rider = sqlx::query_as::<_, Rider>(
-        "SELECT id, full_name, phone_number, national_id, address, motorbike_registration, profile_photo, status, current_lat::float8, current_lng::float8, total_deliveries, completed_deliveries, failed_deliveries, performance_score::float8, total_revenue::float8, created_at, updated_at FROM riders WHERE id = $1",
+        "SELECT id, full_name, phone AS phone_number, COALESCE(national_id, '') AS national_id, '' AS address, COALESCE(motorbike_plate, '') AS motorbike_registration, profile_photo_url AS profile_photo, CASE WHEN is_active THEN 'active'::rider_status ELSE 'suspended'::rider_status END AS status, NULL::float8 AS current_lat, NULL::float8 AS current_lng, 0 AS total_deliveries, 0 AS completed_deliveries, 0 AS failed_deliveries, 0.0::float8 AS performance_score, 0.0::float8 AS total_revenue, created_at, COALESCE(updated_at, created_at) AS updated_at FROM riders WHERE id = $1",
     )
     .bind(id)
     .fetch_optional(state.db.as_ref())
@@ -58,12 +58,11 @@ pub async fn create_rider(
     req: web::Json<CreateRiderRequest>,
 ) -> Result<HttpResponse, Error> {
     let rider = sqlx::query_as::<_, Rider>(
-        "INSERT INTO riders (full_name, phone_number, national_id, address, motorbike_registration, profile_photo, status, total_deliveries, completed_deliveries, failed_deliveries, performance_score, total_revenue, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, 'active'::rider_status, 0, 0, 0, 0.0, 0.0, NOW(), NOW()) RETURNING id, full_name, phone_number, national_id, address, motorbike_registration, profile_photo, status, current_lat::float8, current_lng::float8, total_deliveries, completed_deliveries, failed_deliveries, performance_score::float8, total_revenue::float8, created_at, updated_at",
+        "INSERT INTO riders (full_name, phone, national_id, motorbike_plate, profile_photo_url, is_active, is_verified, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, true, false, NOW(), NOW()) RETURNING id, full_name, phone AS phone_number, COALESCE(national_id, '') AS national_id, '' AS address, COALESCE(motorbike_plate, '') AS motorbike_registration, profile_photo_url AS profile_photo, CASE WHEN is_active THEN 'active'::rider_status ELSE 'suspended'::rider_status END AS status, NULL::float8 AS current_lat, NULL::float8 AS current_lng, 0 AS total_deliveries, 0 AS completed_deliveries, 0 AS failed_deliveries, 0.0::float8 AS performance_score, 0.0::float8 AS total_revenue, created_at, COALESCE(updated_at, created_at) AS updated_at",
     )
     .bind(&req.full_name)
     .bind(&req.phone_number)
     .bind(&req.national_id)
-    .bind(&req.address)
     .bind(&req.motorbike_registration)
     .bind(&req.profile_photo)
     .fetch_one(state.db.as_ref())
@@ -109,11 +108,10 @@ pub async fn update_rider(
     let id = path.into_inner();
     
     let rider = sqlx::query_as::<_, Rider>(
-        "UPDATE riders SET full_name = COALESCE($1, full_name), phone_number = COALESCE($2, phone_number), address = COALESCE($3, address), profile_photo = COALESCE($4, profile_photo), updated_at = NOW() WHERE id = $5 RETURNING id, full_name, phone_number, national_id, address, motorbike_registration, profile_photo, status, current_lat::float8, current_lng::float8, total_deliveries, completed_deliveries, failed_deliveries, performance_score::float8, total_revenue::float8, created_at, updated_at",
+        "UPDATE riders SET full_name = COALESCE($1, full_name), phone = COALESCE($2, phone), profile_photo_url = COALESCE($3, profile_photo_url), updated_at = NOW() WHERE id = $4 RETURNING id, full_name, phone AS phone_number, COALESCE(national_id, '') AS national_id, '' AS address, COALESCE(motorbike_plate, '') AS motorbike_registration, profile_photo_url AS profile_photo, CASE WHEN is_active THEN 'active'::rider_status ELSE 'suspended'::rider_status END AS status, NULL::float8 AS current_lat, NULL::float8 AS current_lng, 0 AS total_deliveries, 0 AS completed_deliveries, 0 AS failed_deliveries, 0.0::float8 AS performance_score, 0.0::float8 AS total_revenue, created_at, COALESCE(updated_at, created_at) AS updated_at",
     )
     .bind(&req.full_name)
     .bind(&req.phone_number)
-    .bind(&req.address)
     .bind(&req.profile_photo)
     .bind(id)
     .fetch_one(state.db.as_ref())
@@ -134,7 +132,7 @@ pub async fn suspend_rider(
     let id = path.into_inner();
     
     let rider = sqlx::query_as::<_, Rider>(
-        "UPDATE riders SET status = 'suspended'::rider_status, updated_at = NOW() WHERE id = $1 RETURNING id, full_name, phone_number, national_id, address, motorbike_registration, profile_photo, status, current_lat::float8, current_lng::float8, total_deliveries, completed_deliveries, failed_deliveries, performance_score::float8, total_revenue::float8, created_at, updated_at",
+        "UPDATE riders SET is_active = false, updated_at = NOW() WHERE id = $1 RETURNING id, full_name, phone AS phone_number, COALESCE(national_id, '') AS national_id, '' AS address, COALESCE(motorbike_plate, '') AS motorbike_registration, profile_photo_url AS profile_photo, CASE WHEN is_active THEN 'active'::rider_status ELSE 'suspended'::rider_status END AS status, NULL::float8 AS current_lat, NULL::float8 AS current_lng, 0 AS total_deliveries, 0 AS completed_deliveries, 0 AS failed_deliveries, 0.0::float8 AS performance_score, 0.0::float8 AS total_revenue, created_at, COALESCE(updated_at, created_at) AS updated_at",
     )
     .bind(id)
     .fetch_one(state.db.as_ref())
@@ -167,7 +165,7 @@ pub async fn activate_rider(
     let id = path.into_inner();
     
     let rider = sqlx::query_as::<_, Rider>(
-        "UPDATE riders SET status = 'active'::rider_status, updated_at = NOW() WHERE id = $1 RETURNING id, full_name, phone_number, national_id, address, motorbike_registration, profile_photo, status, current_lat::float8, current_lng::float8, total_deliveries, completed_deliveries, failed_deliveries, performance_score::float8, total_revenue::float8, created_at, updated_at",
+        "UPDATE riders SET is_active = true, updated_at = NOW() WHERE id = $1 RETURNING id, full_name, phone AS phone_number, COALESCE(national_id, '') AS national_id, '' AS address, COALESCE(motorbike_plate, '') AS motorbike_registration, profile_photo_url AS profile_photo, CASE WHEN is_active THEN 'active'::rider_status ELSE 'suspended'::rider_status END AS status, NULL::float8 AS current_lat, NULL::float8 AS current_lng, 0 AS total_deliveries, 0 AS completed_deliveries, 0 AS failed_deliveries, 0.0::float8 AS performance_score, 0.0::float8 AS total_revenue, created_at, COALESCE(updated_at, created_at) AS updated_at",
     )
     .bind(id)
     .fetch_one(state.db.as_ref())
@@ -199,7 +197,7 @@ pub async fn list_expenses(
 ) -> Result<HttpResponse, Error> {
     let rider_id = path.into_inner();
     let expenses = sqlx::query_as::<_, Expense>(
-        "SELECT id, rider_id, category, amount, description, receipt_image, status, admin_notes, created_at, reviewed_at, reviewed_by FROM rider_expenses WHERE rider_id = $1 ORDER BY created_at DESC LIMIT 50",
+        "SELECT id, rider_id, category, amount::float8, description, receipt_url AS receipt_image, status, rejection_reason AS admin_notes, created_at, reviewed_at, reviewed_by FROM expenses WHERE rider_id = $1 ORDER BY created_at DESC LIMIT 50",
     )
     .bind(rider_id)
     .fetch_all(state.db.as_ref())
@@ -213,7 +211,7 @@ pub async fn list_all_expenses(
     state: web::Data<AppState>,
 ) -> Result<HttpResponse, Error> {
     let expenses = sqlx::query_as::<_, crate::models::ExpenseWithRider>(
-        "SELECT e.id, e.rider_id, r.full_name as rider_name, e.category, e.amount::float8, e.description, e.receipt_image, e.status, e.admin_notes, e.created_at, e.reviewed_at, e.reviewed_by FROM rider_expenses e JOIN riders r ON e.rider_id = r.id ORDER BY e.created_at DESC LIMIT 50",
+        "SELECT e.id, e.rider_id, r.full_name as rider_name, e.category, e.amount::float8, e.description, e.receipt_url AS receipt_image, e.status, e.rejection_reason AS admin_notes, e.created_at, e.reviewed_at, e.reviewed_by FROM expenses e JOIN riders r ON e.rider_id = r.id ORDER BY e.created_at DESC LIMIT 50",
     )
     .fetch_all(state.db.as_ref())
     .await
@@ -227,7 +225,7 @@ pub async fn create_expense(
     req: web::Json<CreateExpenseRequest>,
 ) -> Result<HttpResponse, Error> {
     let expense = sqlx::query_as::<_, Expense>(
-        "INSERT INTO rider_expenses (rider_id, category, amount, description, receipt_image, status, created_at) VALUES ($1, $2::expense_category, $3, $4, $5, 'pending'::expense_status, NOW()) RETURNING id, rider_id, category, amount, description, receipt_image, status, admin_notes, created_at, reviewed_at, reviewed_by",
+        "INSERT INTO expenses (rider_id, category, amount, description, receipt_url, status, created_at) VALUES ($1, $2::expense_category, $3, $4, $5, 'pending'::expense_status, NOW()) RETURNING id, rider_id, category, amount::float8, description, receipt_url AS receipt_image, status, rejection_reason AS admin_notes, created_at, reviewed_at, reviewed_by",
     )
     .bind(req.rider_id)
     .bind(&req.category)
@@ -266,7 +264,7 @@ pub async fn review_expense(
     let expense_id = path.into_inner();
     
     let expense = sqlx::query_as::<_, Expense>(
-        "UPDATE rider_expenses SET status = $1::expense_status, admin_notes = $2, reviewed_at = NOW() WHERE id = $3 RETURNING id, rider_id, category, amount, description, receipt_image, status, admin_notes, created_at, reviewed_at, reviewed_by",
+        "UPDATE expenses SET status = $1::expense_status, rejection_reason = $2, reviewed_at = NOW() WHERE id = $3 RETURNING id, rider_id, category, amount::float8, description, receipt_url AS receipt_image, status, rejection_reason AS admin_notes, created_at, reviewed_at, reviewed_by",
     )
     .bind(&req.status)
     .bind(&req.admin_notes)
@@ -298,7 +296,7 @@ pub async fn rider_performance(
     state: web::Data<AppState>,
 ) -> Result<HttpResponse, Error> {
     let riders = sqlx::query_as::<_, crate::models::TopRider>(
-        "SELECT ROW_NUMBER() OVER (ORDER BY completed_deliveries DESC) as rank, full_name as rider_name, completed_deliveries as deliveries_completed, CASE WHEN total_deliveries > 0 THEN (completed_deliveries::float8 / total_deliveries::float8) * 100 ELSE 0 END as success_rate, total_revenue::float8 as revenue_generated FROM riders WHERE total_deliveries > 0 ORDER BY completed_deliveries DESC LIMIT 8"
+        "SELECT ROW_NUMBER() OVER (ORDER BY COUNT(*) FILTER (WHERE LOWER(d.status::text) = 'delivered') DESC)::int4 as rank, r.full_name as rider_name, COUNT(*) FILTER (WHERE LOWER(d.status::text) = 'delivered')::int4 as deliveries_completed, CASE WHEN COUNT(*) > 0 THEN (COUNT(*) FILTER (WHERE LOWER(d.status::text) = 'delivered')::float8 / COUNT(*)::float8) * 100 ELSE 0 END as success_rate, COALESCE(SUM(COALESCE(d.delivery_fee, 0)), 0)::float8 as revenue_generated FROM riders r LEFT JOIN deliveries d ON COALESCE(d.assigned_rider_id, d.rider_id) = r.id GROUP BY r.id, r.full_name HAVING COUNT(*) > 0 ORDER BY deliveries_completed DESC LIMIT 8"
     )
     .fetch_all(state.db.as_ref())
     .await
@@ -311,13 +309,34 @@ pub fn routes() -> actix_web::Scope {
     web::scope("/api/riders")
         .route("", web::get().to(list_riders))
         .route("", web::post().to(create_rider))
-        .route("/{id}", web::get().to(get_rider))
-        .route("/{id}", web::put().to(update_rider))
-        .route("/{id}/suspend", web::post().to(suspend_rider))
-        .route("/{id}/activate", web::post().to(activate_rider))
-        .route("/performance", web::get().to(rider_performance))
-        .route("/expenses", web::get().to(list_all_expenses))
-        .route("/{id}/expenses", web::get().to(list_expenses))
-        .route("/expenses", web::post().to(create_expense))
-        .route("/expenses/{id}/review", web::post().to(review_expense))
+        .service(
+            web::resource("/performance")
+                .route(web::get().to(rider_performance))
+        )
+        .service(
+            web::resource("/expenses")
+                .route(web::get().to(list_all_expenses))
+                .route(web::post().to(create_expense))
+        )
+        .service(
+            web::resource("/expenses/{id}/review")
+                .route(web::post().to(review_expense))
+        )
+        .service(
+            web::resource("/{id}")
+                .route(web::get().to(get_rider))
+                .route(web::put().to(update_rider))
+        )
+        .service(
+            web::resource("/{id}/suspend")
+                .route(web::post().to(suspend_rider))
+        )
+        .service(
+            web::resource("/{id}/activate")
+                .route(web::post().to(activate_rider))
+        )
+        .service(
+            web::resource("/{id}/expenses")
+                .route(web::get().to(list_expenses))
+        )
 }

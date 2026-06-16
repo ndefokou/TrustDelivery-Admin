@@ -37,7 +37,7 @@ pub async fn monthly_report(state: web::Data<AppState>) -> Result<HttpResponse, 
 
 pub async fn revenue_report(state: web::Data<AppState>) -> Result<HttpResponse, Error> {
     let revenue = sqlx::query_as::<_, crate::models::DailyRevenue>(
-        "SELECT DATE(created_at)::text as date, SUM(delivery_cost)::float as revenue FROM deliveries WHERE status = 'delivered' GROUP BY DATE(created_at) ORDER BY DATE(created_at) LIMIT 30"
+        "SELECT DATE(created_at)::text as date, SUM(COALESCE(delivery_fee, delivery_cost, 0))::float8 as revenue FROM deliveries WHERE LOWER(status::text) = 'delivered' GROUP BY DATE(created_at) ORDER BY DATE(created_at) LIMIT 30"
     )
     .fetch_all(state.db.as_ref())
     .await
@@ -48,7 +48,7 @@ pub async fn revenue_report(state: web::Data<AppState>) -> Result<HttpResponse, 
 
 pub async fn rider_performance(state: web::Data<AppState>) -> Result<HttpResponse, Error> {
     let riders = sqlx::query_as::<_, crate::models::TopRider>(
-        "SELECT r.full_name as rider_name, COUNT(d.id)::int as deliveries_completed, AVG(CASE WHEN d.status = 'delivered' THEN 100 ELSE 0 END)::float as success_rate, SUM(d.delivery_cost)::float as revenue_generated, ROW_NUMBER() OVER (ORDER BY COUNT(d.id) DESC) as rank FROM riders r LEFT JOIN deliveries d ON d.assigned_rider_id = r.id GROUP BY r.id, r.full_name ORDER BY deliveries_completed DESC LIMIT 10"
+        "SELECT ROW_NUMBER() OVER (ORDER BY COUNT(d.id) DESC)::int4 as rank, r.full_name as rider_name, COUNT(d.id)::int4 as deliveries_completed, CASE WHEN COUNT(*) > 0 THEN (COUNT(*) FILTER (WHERE LOWER(d.status::text) = 'delivered')::float8 / COUNT(*)::float8) * 100 ELSE 0 END as success_rate, SUM(COALESCE(d.delivery_fee, d.delivery_cost, 0))::float8 as revenue_generated FROM riders r LEFT JOIN deliveries d ON COALESCE(d.assigned_rider_id, d.rider_id) = r.id GROUP BY r.id, r.full_name ORDER BY deliveries_completed DESC LIMIT 10"
     )
     .fetch_all(state.db.as_ref())
     .await
@@ -59,7 +59,7 @@ pub async fn rider_performance(state: web::Data<AppState>) -> Result<HttpRespons
 
 pub async fn failed_deliveries_report(state: web::Data<AppState>) -> Result<HttpResponse, Error> {
     let failures = sqlx::query_as::<_, crate::models::StatusDistribution>(
-        "SELECT failure_reason as status, COUNT(*)::int as count, CASE WHEN COUNT(*) = 0 THEN 0 ELSE (COUNT(*)::float / (SELECT COUNT(*) FROM deliveries WHERE status = 'failed') * 100) END as percentage FROM deliveries WHERE status = 'failed' AND failure_reason IS NOT NULL GROUP BY failure_reason"
+        "SELECT COALESCE(failure_reason::text, 'Unknown') as status, COUNT(*)::int as count, CASE WHEN (SELECT COUNT(*) FROM deliveries WHERE LOWER(status::text) = 'failed') = 0 THEN 0 ELSE (COUNT(*)::float8 / (SELECT COUNT(*)::float8 FROM deliveries WHERE LOWER(status::text) = 'failed') * 100) END as percentage FROM deliveries WHERE LOWER(status::text) = 'failed' AND failure_reason IS NOT NULL GROUP BY failure_reason"
     )
     .fetch_all(state.db.as_ref())
     .await

@@ -4,7 +4,9 @@ use crate::models::{CreateDeliveryRequest, UpdateDeliveryRequest, AssignRiderReq
 use uuid::Uuid;
 use chrono::Utc;
 
-const DELIVERY_SELECT: &str = "id, product_description, product_value::float8, delivery_cost::float8, distance_km, customer_name, customer_phone, delivery_address_text AS delivery_address, NULL::float8 AS delivery_lat, NULL::float8 AS delivery_lng, merchant_id, assigned_rider_id, status, failure_reason::text AS failure_reason, otp_code, otp_verified, created_at, NULL::timestamptz AS paid_at, assigned_at, picked_up_at, delivered_at, NULL::timestamptz AS failed_at";
+const DELIVERY_SELECT: &str = "d.id, d.product_description, d.product_value::float8, d.delivery_cost::float8, d.distance_km::float8, d.customer_name, d.customer_phone, COALESCE(d.delivery_address_text, d.delivery_address) AS delivery_address, d.delivery_latitude::float8 AS delivery_lat, d.delivery_longitude::float8 AS delivery_lng, d.merchant_id, COALESCE(d.assigned_rider_id, d.rider_id) AS assigned_rider_id, LOWER(d.status::text)::delivery_status AS status, d.failure_reason, d.otp_code, d.otp_verified, d.created_at, d.paid_at, d.assigned_at, d.picked_up_at, d.delivered_at, d.failed_at";
+
+const DELIVERY_RETURNING: &str = "id, product_description, product_value::float8, delivery_cost::float8, distance_km::float8, customer_name, customer_phone, COALESCE(delivery_address_text, delivery_address) AS delivery_address, delivery_latitude::float8 AS delivery_lat, delivery_longitude::float8 AS delivery_lng, merchant_id, COALESCE(assigned_rider_id, rider_id) AS assigned_rider_id, LOWER(status::text)::delivery_status AS status, failure_reason, otp_code, otp_verified, created_at, paid_at, assigned_at, picked_up_at, delivered_at, failed_at";
 
 pub async fn list_deliveries(
     state: web::Data<AppState>,
@@ -13,30 +15,19 @@ pub async fn list_deliveries(
     let page = query.page.unwrap_or(1).max(1) as i64;
     let per_page = query.per_page.unwrap_or(20).max(1).min(100) as i64;
 
-    let select_cols: String = DELIVERY_SELECT
-        .split(", ")
-        .map(|col| {
-            if col.starts_with("NULL") {
-                col.to_string()
-            } else {
-                format!("d.{}", col)
-            }
-        })
-        .collect::<Vec<_>>()
-        .join(", ");
     let mut from_clause = String::from("FROM deliveries d");
     if query.merchant.as_ref().map(|s| !s.is_empty()).unwrap_or(false) {
         from_clause.push_str(" JOIN merchants m ON m.id = d.merchant_id");
     }
 
-    let mut sql = format!("SELECT {} {}", select_cols, from_clause);
+    let mut sql = format!("SELECT {} {}", DELIVERY_SELECT, from_clause);
     let mut count_sql = format!("SELECT COUNT(*) {}", from_clause);
 
     let mut conditions: Vec<String> = Vec::new();
     let mut idx: usize = 1;
 
     if query.status.as_ref().map(|s| !s.is_empty()).unwrap_or(false) {
-        conditions.push(format!("d.status::text = ${}", idx));
+        conditions.push(format!("LOWER(d.status::text) = ${}", idx));
         idx += 1;
     }
     if query.merchant_id.is_some() {
@@ -184,7 +175,7 @@ pub async fn get_delivery(
     let id = path.into_inner();
     
     let delivery = sqlx::query_as::<_, crate::models::Delivery>(
-        &format!("SELECT {} FROM deliveries WHERE id = $1", DELIVERY_SELECT),
+        &format!("SELECT {} FROM deliveries d WHERE id = $1", DELIVERY_SELECT),
     )
     .bind(id)
     .fetch_optional(state.db.as_ref())
@@ -232,7 +223,7 @@ pub async fn create_delivery(
     let delivery = sqlx::query_as::<_, crate::models::Delivery>(
         &format!(
             "INSERT INTO deliveries (product_description, product_value, delivery_cost, distance_km, customer_name, customer_phone, delivery_address_text, merchant_id, status, otp_code, otp_verified, created_at, updated_at, delivery_id, currency, payment_method, payment_status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'awaiting_assignment', $9, false, $10, NOW(), gen_random_uuid()::text, 'FCFA', 'merchant_wallet', 'pending') RETURNING {}",
-            DELIVERY_SELECT
+            DELIVERY_RETURNING
         ),
     )
     .bind(&req.product_description)
@@ -282,7 +273,7 @@ pub async fn assign_rider(
     let delivery = sqlx::query_as::<_, crate::models::Delivery>(
         &format!(
             "UPDATE deliveries SET assigned_rider_id = $1, status = 'assigned', assigned_at = $2 WHERE id = $3 RETURNING {}",
-            DELIVERY_SELECT
+            DELIVERY_RETURNING
         ),
     )
     .bind(req.rider_id)
@@ -325,7 +316,7 @@ pub async fn update_delivery(
     let delivery = sqlx::query_as::<_, crate::models::Delivery>(
         &format!(
             "UPDATE deliveries SET product_description = COALESCE($1, product_description), customer_name = COALESCE($2, customer_name), customer_phone = COALESCE($3, customer_phone), delivery_address_text = COALESCE($4, delivery_address_text) WHERE id = $5 RETURNING {}",
-            DELIVERY_SELECT
+            DELIVERY_RETURNING
         ),
     )
     .bind(&req.product_description)
@@ -356,7 +347,7 @@ pub async fn cancel_delivery(
     let delivery = sqlx::query_as::<_, crate::models::Delivery>(
         &format!(
             "UPDATE deliveries SET status = 'failed'::delivery_status WHERE id = $1 RETURNING {}",
-            DELIVERY_SELECT
+            DELIVERY_RETURNING
         ),
     )
     .bind(id)
@@ -391,7 +382,7 @@ pub async fn get_awaiting_assignments(
     state: web::Data<AppState>,
 ) -> Result<HttpResponse, Error> {
     match sqlx::query_as::<_, crate::models::Delivery>(
-        &format!("SELECT {} FROM deliveries WHERE status = 'awaiting_assignment' ORDER BY created_at DESC", DELIVERY_SELECT),
+        &format!("SELECT {} FROM deliveries d WHERE LOWER(status::text) = 'awaiting_assignment' ORDER BY created_at DESC", DELIVERY_SELECT),
     )
     .fetch_all(state.db.as_ref())
     .await {
