@@ -35,6 +35,7 @@ export const mockMerchants: Merchant[] = [
     total_revenue: 24500000,
     active_deliveries: 12,
     created_at: '2023-05-10T08:00:00Z',
+    is_verified: true,
     updated_at: '2024-06-10T10:00:00Z',
   },
   {
@@ -49,6 +50,7 @@ export const mockMerchants: Merchant[] = [
     total_revenue: 12800000,
     active_deliveries: 8,
     created_at: '2023-08-15T09:30:00Z',
+    is_verified: true,
     updated_at: '2024-06-09T16:45:00Z',
   },
   {
@@ -63,6 +65,7 @@ export const mockMerchants: Merchant[] = [
     total_revenue: 18200000,
     active_deliveries: 5,
     created_at: '2023-06-20T11:00:00Z',
+    is_verified: true,
     updated_at: '2024-06-10T09:15:00Z',
   },
 ]
@@ -82,6 +85,7 @@ export const mockRiders: Rider[] = [
     performance_score: 94,
     total_revenue: 1250000,
     created_at: '2024-01-15T10:30:00Z',
+    is_verified: true,
     updated_at: '2024-06-10T08:00:00Z',
   },
   {
@@ -98,6 +102,7 @@ export const mockRiders: Rider[] = [
     performance_score: 97,
     total_revenue: 780000,
     created_at: '2024-02-20T09:00:00Z',
+    is_verified: true,
     updated_at: '2024-06-09T15:30:00Z',
   },
   {
@@ -114,6 +119,7 @@ export const mockRiders: Rider[] = [
     performance_score: 91,
     total_revenue: 1850000,
     created_at: '2023-11-05T11:00:00Z',
+    is_verified: true,
     updated_at: '2024-06-10T07:45:00Z',
   },
 ]
@@ -136,6 +142,7 @@ export const mockDeliveries: Delivery[] = [
     otp_code: '4829',
     otp_verified: true,
     created_at: '2024-06-10T08:00:00Z',
+    collect_payment: false,
     paid_at: '2024-06-10T08:15:00Z',
     assigned_at: '2024-06-10T08:30:00Z',
     picked_up_at: '2024-06-10T09:00:00Z',
@@ -158,6 +165,7 @@ export const mockDeliveries: Delivery[] = [
     otp_code: '7153',
     otp_verified: false,
     created_at: '2024-06-10T09:30:00Z',
+    collect_payment: false,
     paid_at: '2024-06-10T09:45:00Z',
     assigned_at: '2024-06-10T10:00:00Z',
     picked_up_at: '2024-06-10T10:30:00Z',
@@ -178,6 +186,7 @@ export const mockDeliveries: Delivery[] = [
     otp_code: '9031',
     otp_verified: false,
     created_at: '2024-06-10T10:00:00Z',
+    collect_payment: false,
     paid_at: '2024-06-10T10:10:00Z',
   },
   {
@@ -197,6 +206,7 @@ export const mockDeliveries: Delivery[] = [
     otp_code: '2648',
     otp_verified: false,
     created_at: '2024-06-10T07:00:00Z',
+    collect_payment: false,
     paid_at: '2024-06-10T07:15:00Z',
     assigned_at: '2024-06-10T07:45:00Z',
   },
@@ -217,6 +227,7 @@ export const mockDeliveries: Delivery[] = [
     otp_code: '5376',
     otp_verified: false,
     created_at: '2024-06-09T14:00:00Z',
+    collect_payment: false,
     paid_at: '2024-06-09T14:20:00Z',
     assigned_at: '2024-06-09T14:45:00Z',
     picked_up_at: '2024-06-09T15:30:00Z',
@@ -238,6 +249,7 @@ export const mockDeliveries: Delivery[] = [
     otp_code: '8412',
     otp_verified: false,
     created_at: '2024-06-10T11:00:00Z',
+    collect_payment: false,
     paid_at: '2024-06-10T11:05:00Z',
   },
   {
@@ -257,6 +269,7 @@ export const mockDeliveries: Delivery[] = [
     otp_code: '1937',
     otp_verified: false,
     created_at: '2024-06-09T16:00:00Z',
+    collect_payment: false,
     paid_at: '2024-06-09T16:15:00Z',
     assigned_at: '2024-06-09T16:45:00Z',
   },
@@ -276,6 +289,7 @@ export const mockDeliveries: Delivery[] = [
     otp_code: '6084',
     otp_verified: false,
     created_at: '2024-06-09T08:00:00Z',
+    collect_payment: false,
     paid_at: '2024-06-09T08:20:00Z',
     assigned_at: '2024-06-09T08:45:00Z',
     picked_up_at: '2024-06-09T09:30:00Z',
@@ -297,6 +311,7 @@ export const mockDeliveries: Delivery[] = [
     otp_code: '7392',
     otp_verified: false,
     created_at: '2024-06-10T12:00:00Z',
+    collect_payment: false,
     paid_at: '2024-06-10T12:05:00Z',
   },
   {
@@ -315,6 +330,7 @@ export const mockDeliveries: Delivery[] = [
     otp_code: '2846',
     otp_verified: false,
     created_at: '2024-06-10T12:30:00Z',
+    collect_payment: false,
     paid_at: '2024-06-10T12:35:00Z',
   },
   {
@@ -333,6 +349,7 @@ export const mockDeliveries: Delivery[] = [
     otp_code: '9513',
     otp_verified: false,
     created_at: '2024-06-10T09:15:00Z',
+    collect_payment: false,
     paid_at: '2024-06-10T09:20:00Z',
   },
   {
@@ -351,6 +368,7 @@ export const mockDeliveries: Delivery[] = [
     otp_code: '4628',
     otp_verified: false,
     created_at: '2024-06-10T13:00:00Z',
+    collect_payment: false,
     paid_at: '2024-06-10T13:05:00Z',
   },
   {
@@ -369,6 +387,7 @@ export const mockDeliveries: Delivery[] = [
     otp_code: '5739',
     otp_verified: false,
     created_at: '2024-06-10T14:00:00Z',
+    collect_payment: false,
     paid_at: '2024-06-10T14:05:00Z',
   },
   {
@@ -387,6 +406,7 @@ export const mockDeliveries: Delivery[] = [
     otp_code: '8147',
     otp_verified: false,
     created_at: '2024-06-10T14:30:00Z',
+    collect_payment: false,
     paid_at: '2024-06-10T14:35:00Z',
   },
   {
@@ -405,6 +425,7 @@ export const mockDeliveries: Delivery[] = [
     otp_code: '6273',
     otp_verified: false,
     created_at: '2024-06-10T11:45:00Z',
+    collect_payment: false,
     paid_at: '2024-06-10T11:50:00Z',
   },
   {
@@ -423,6 +444,7 @@ export const mockDeliveries: Delivery[] = [
     otp_code: '3951',
     otp_verified: false,
     created_at: '2024-06-10T10:30:00Z',
+    collect_payment: false,
     paid_at: '2024-06-10T10:35:00Z',
   },
 ]

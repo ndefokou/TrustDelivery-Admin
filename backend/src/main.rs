@@ -13,6 +13,7 @@ use actix_web::web::Data;
 use config::app_state::AppState;
 use handlers::{
     auth, deliveries, riders, merchants, reports, payments, settings, notifications, dashboard,
+    collections,
 };
 
 #[actix_web::main]
@@ -48,6 +49,7 @@ async fn main() -> std::io::Result<()> {
             .service(settings::routes())
             .service(notifications::routes())
             .service(dashboard::routes())
+            .service(collections::routes())
     })
     .bind(format!("{}:{}", host, port))?
     .run()

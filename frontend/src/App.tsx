@@ -6,6 +6,7 @@ import DeliveryDetails from './pages/DeliveryDetails'
 import AwaitingAssignment from './pages/AwaitingAssignment'
 import Riders from './pages/Riders'
 import RiderDetails from './pages/RiderDetails'
+import RiderCollections from './pages/RiderCollections'
 import Merchants from './pages/Merchants'
 import MerchantDetails from './pages/MerchantDetails'
 import Reports from './pages/Reports'
@@ -25,6 +26,7 @@ export default function App() {
           <Route path="deliveries/awaiting" element={<AwaitingAssignment />} />
           <Route path="riders" element={<Riders />} />
           <Route path="riders/:id" element={<RiderDetails />} />
+          <Route path="riders/collections" element={<RiderCollections />} />
           <Route path="merchants" element={<Merchants />} />
           <Route path="merchants/:id" element={<MerchantDetails />} />
           <Route path="reports" element={<Reports />} />

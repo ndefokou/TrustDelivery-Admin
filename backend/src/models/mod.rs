@@ -23,6 +23,23 @@ impl Default for DeliveryStatus {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type)]
+#[sqlx(type_name = "varchar", rename_all = "snake_case")]
+pub enum CollectionStatus {
+    #[serde(rename = "pending")]
+    Pending,
+    #[serde(rename = "collected")]
+    Collected,
+    #[serde(rename = "not_collected")]
+    NotCollected,
+}
+
+impl Default for CollectionStatus {
+    fn default() -> Self {
+        CollectionStatus::Pending
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct Delivery {
     pub id: Uuid,
@@ -47,6 +64,18 @@ pub struct Delivery {
     pub picked_up_at: Option<DateTime<Utc>>,
     pub delivered_at: Option<DateTime<Utc>>,
     pub failed_at: Option<DateTime<Utc>>,
+    #[sqlx(default)]
+    pub collect_payment: bool,
+    #[sqlx(default)]
+    pub amount_to_collect: Option<f64>,
+    #[sqlx(default)]
+    pub amount_collected: Option<f64>,
+    #[sqlx(default)]
+    pub collection_status: Option<String>,
+    #[sqlx(default)]
+    pub collected_at: Option<DateTime<Utc>>,
+    #[sqlx(default)]
+    pub rider_notes: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type)]
@@ -67,6 +96,7 @@ pub struct Rider {
     pub id: Uuid,
     pub full_name: String,
     pub phone_number: String,
+    pub email: Option<String>,
     pub national_id: String,
     pub address: String,
     pub motorbike_registration: String,
@@ -79,6 +109,7 @@ pub struct Rider {
     pub failed_deliveries: i32,
     pub performance_score: f64,
     pub total_revenue: f64,
+    pub is_verified: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -341,6 +372,68 @@ pub struct DashboardData {
     pub revenue_per_day: Vec<DailyRevenue>,
     pub status_distribution: Vec<StatusDistribution>,
     pub top_performing_riders: Vec<TopRider>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct RiderCollection {
+    pub id: Uuid,
+    pub rider_id: Uuid,
+    pub delivery_id: Uuid,
+    pub amount_collected: f64,
+    pub amount_returned: f64,
+    pub collection_status: String,
+    pub collected_at: Option<DateTime<Utc>>,
+    pub returned_at: Option<DateTime<Utc>>,
+    pub validated_by: Option<Uuid>,
+    pub validated_at: Option<DateTime<Utc>>,
+    pub notes: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct RiderCollectionWithDetails {
+    pub id: Uuid,
+    pub rider_id: Uuid,
+    pub rider_name: String,
+    pub delivery_id: Uuid,
+    pub customer_name: String,
+    pub amount_collected: f64,
+    pub amount_returned: f64,
+    pub collection_status: String,
+    pub collected_at: Option<DateTime<Utc>>,
+    pub returned_at: Option<DateTime<Utc>>,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct RiderCollectionSummary {
+    pub rider_id: Uuid,
+    pub rider_name: String,
+    pub total_collected: f64,
+    pub total_returned: f64,
+    pub outstanding_balance: f64,
+    pub collections_count: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct CollectionLedger {
+    pub id: Uuid,
+    pub rider_id: Option<Uuid>,
+    pub delivery_id: Option<Uuid>,
+    pub action: String,
+    pub amount: f64,
+    pub reference_id: Option<Uuid>,
+    pub performed_by: Option<Uuid>,
+    pub notes: Option<String>,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ValidateReturnRequest {
+    pub rider_id: Uuid,
+    pub amount: f64,
+    pub notes: Option<String>,
 }
 
 pub mod requests;

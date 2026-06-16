@@ -77,12 +77,15 @@ pub struct RiderBasic {
     pub id: Uuid,
     pub full_name: String,
     pub phone_number: String,
+    pub email: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateRiderRequest {
     pub full_name: String,
     pub phone_number: String,
+    pub email: String,
+    pub password: String,
     pub national_id: String,
     pub address: String,
     pub motorbike_registration: String,
@@ -94,8 +97,14 @@ pub struct CreateRiderRequest {
 pub struct UpdateRiderRequest {
     pub full_name: Option<String>,
     pub phone_number: Option<String>,
+    pub email: Option<String>,
     pub address: Option<String>,
     pub profile_photo: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpdateRiderPasswordRequest {
+    pub password: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

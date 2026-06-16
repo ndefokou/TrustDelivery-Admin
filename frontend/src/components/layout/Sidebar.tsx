@@ -9,7 +9,8 @@ import {
   CreditCard,
   Settings,
   ChevronDown,
-  X
+  X,
+  Banknote
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 
@@ -43,6 +44,7 @@ const navItems: NavItem[] = [
       { name: 'Rider List', path: '/riders' },
       { name: 'Rider Performance', path: '/riders?tab=performance' },
       { name: 'Rider Expenses', path: '/riders?tab=expenses' },
+      { name: 'Rider Collections', path: '/riders/collections' },
     ],
   },
   {

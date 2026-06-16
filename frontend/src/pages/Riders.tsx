@@ -12,6 +12,16 @@ import { Plus, Search, Eye, Edit, Ban, CheckCircle, ListChecks, TrendingUp, Rece
 import { AxiosError } from 'axios'
 import { format } from 'date-fns'
 
+interface CreateRiderFormData {
+  full_name: string
+  phone_number: string
+  email: string
+  password: string
+  national_id: string
+  address: string
+  motorbike_registration: string
+}
+
 const tabs = [
   { id: 'list', label: 'Rider List', icon: ListChecks },
   { id: 'performance', label: 'Rider Performance', icon: TrendingUp },
@@ -29,11 +39,16 @@ export default function Riders() {
 
   const [showAddModal, setShowAddModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
+  const [showPasswordModal, setShowPasswordModal] = useState(false)
   const [showReviewModal, setShowReviewModal] = useState(false)
+  const [generatedPassword, setGeneratedPassword] = useState<string | null>(null)
+  const [createdRiderEmail, setCreatedRiderEmail] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [newRider, setNewRider] = useState({
+  const [newRider, setNewRider] = useState<CreateRiderFormData>({
     full_name: '',
     phone_number: '',
+    email: '',
+    password: '',
     national_id: '',
     address: '',
     motorbike_registration: '',
@@ -41,6 +56,15 @@ export default function Riders() {
   const [editingRider, setEditingRider] = useState<any>(null)
   const [reviewingExpense, setReviewingExpense] = useState<any>(null)
   const [reviewForm, setReviewForm] = useState({ status: 'approved', admin_notes: '' })
+
+  const generatePassword = () => {
+    const chars = 'ABCDEFGHJKLMNPRSTUVWXYZabcdefghjkmnprstuvwxyz23456789'
+    let password = ''
+    for (let i = 0; i < 10; i++) {
+      password += chars.charAt(Math.floor(Math.random() * chars.length))
+    }
+    return password
+  }
 
   const { data: ridersData, isLoading: ridersLoading } = useRiders(filters)
   const { data: performance, isLoading: perfLoading } = useRiderPerformance()
@@ -54,10 +78,22 @@ export default function Riders() {
 
   const handleCreateRider = async (e: React.FormEvent) => {
     e.preventDefault()
+    const password = newRider.password || generatePassword()
     try {
-      await createRider.mutateAsync(newRider)
+      await createRider.mutateAsync({
+        full_name: newRider.full_name,
+        phone_number: newRider.phone_number,
+        email: newRider.email,
+        password: password,
+        national_id: newRider.national_id,
+        address: newRider.address,
+        motorbike_registration: newRider.motorbike_registration,
+      })
+      setCreatedRiderEmail(newRider.email)
+      setGeneratedPassword(password)
       setShowAddModal(false)
-      setNewRider({ full_name: '', phone_number: '', national_id: '', address: '', motorbike_registration: '' })
+      setShowPasswordModal(true)
+      setNewRider({ full_name: '', phone_number: '', email: '', password: '', national_id: '', address: '', motorbike_registration: '' })
       setError(null)
     } catch (err) {
       const axiosError = err as AxiosError<{ error: string }>
@@ -531,6 +567,32 @@ export default function Riders() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
+              label="Email"
+              type="email"
+              value={newRider.email}
+              onChange={(e) => setNewRider({ ...newRider, email: e.target.value })}
+              placeholder="rider@example.com"
+              required
+            />
+            <div className="relative">
+              <Input
+                label="Password (leave empty to auto-generate)"
+                type="text"
+                value={newRider.password}
+                onChange={(e) => setNewRider({ ...newRider, password: e.target.value })}
+                placeholder="Auto-generated if empty"
+              />
+              <button
+                type="button"
+                onClick={() => setNewRider({ ...newRider, password: generatePassword() })}
+                className="absolute right-2 top-7 text-xs text-secondary hover:text-primary"
+              >
+                Generate
+              </button>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input
               label="National ID"
               value={newRider.national_id}
               onChange={(e) => setNewRider({ ...newRider, national_id: e.target.value })}
@@ -556,6 +618,34 @@ export default function Riders() {
             </Button>
           </div>
         </form>
+      </Modal>
+
+      <Modal isOpen={showPasswordModal} onClose={() => { setShowPasswordModal(false); setGeneratedPassword(null); setCreatedRiderEmail(null) }} title="Rider Created Successfully" size="md">
+        <div className="space-y-4">
+          <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+            <p className="text-sm text-green-800 dark:text-green-200 mb-2">
+              Rider has been created successfully. Share these credentials with the rider:
+            </p>
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Email:</span>
+                <span className="text-sm font-mono bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">{createdRiderEmail}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Password:</span>
+                <span className="text-sm font-mono bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">{generatedPassword}</span>
+              </div>
+            </div>
+          </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Please save these credentials securely. The rider will need them to log into the Rider App.
+          </p>
+          <div className="flex justify-end">
+            <Button onClick={() => { setShowPasswordModal(false); setGeneratedPassword(null); setCreatedRiderEmail(null) }}>
+              Done
+            </Button>
+          </div>
+        </div>
       </Modal>
 
       <Modal isOpen={showEditModal} onClose={() => { setShowEditModal(false); setEditingRider(null); setError(null) }} title="Edit Rider" size="lg">

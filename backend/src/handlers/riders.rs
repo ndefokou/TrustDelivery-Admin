@@ -1,7 +1,9 @@
 use actix_web::{web, HttpResponse, Error};
 use crate::config::AppState;
-use crate::models::{CreateRiderRequest, UpdateRiderRequest, RiderListResponse, RiderFilter, Rider, Expense, CreateExpenseRequest, ReviewExpenseRequest};
+use crate::models::{CreateRiderRequest, UpdateRiderRequest, UpdateRiderPasswordRequest, RiderListResponse, RiderFilter, Rider, Expense, CreateExpenseRequest, ReviewExpenseRequest};
 use uuid::Uuid;
+
+const RIDER_SELECT: &str = "id, full_name, phone AS phone_number, email, COALESCE(national_id, '') AS national_id, '' AS address, COALESCE(motorbike_plate, '') AS motorbike_registration, profile_photo_url AS profile_photo, CASE WHEN is_active THEN 'active'::rider_status ELSE 'suspended'::rider_status END AS status, NULL::float8 AS current_lat, NULL::float8 AS current_lng, 0 AS total_deliveries, 0 AS completed_deliveries, 0 AS failed_deliveries, 0.0::float8 AS performance_score, 0.0::float8 AS total_revenue, COALESCE(is_verified, false) AS is_verified, created_at, COALESCE(updated_at, created_at) AS updated_at";
 
 pub async fn list_riders(
     state: web::Data<AppState>,
@@ -11,7 +13,7 @@ pub async fn list_riders(
     let per_page: i64 = 20;
     
     let riders = sqlx::query_as::<_, Rider>(
-        "SELECT id, full_name, phone AS phone_number, COALESCE(national_id, '') AS national_id, '' AS address, COALESCE(motorbike_plate, '') AS motorbike_registration, profile_photo_url AS profile_photo, CASE WHEN is_active THEN 'active'::rider_status ELSE 'suspended'::rider_status END AS status, NULL::float8 AS current_lat, NULL::float8 AS current_lng, 0 AS total_deliveries, 0 AS completed_deliveries, 0 AS failed_deliveries, 0.0::float8 AS performance_score, 0.0::float8 AS total_revenue, created_at, COALESCE(updated_at, created_at) AS updated_at FROM riders ORDER BY created_at DESC LIMIT $1 OFFSET $2",
+        &format!("SELECT {} FROM riders ORDER BY created_at DESC LIMIT $1 OFFSET $2", RIDER_SELECT),
     )
     .bind(per_page)
     .bind((page - 1) * per_page)
@@ -39,7 +41,7 @@ pub async fn get_rider(
     let id = path.into_inner();
     
     let rider = sqlx::query_as::<_, Rider>(
-        "SELECT id, full_name, phone AS phone_number, COALESCE(national_id, '') AS national_id, '' AS address, COALESCE(motorbike_plate, '') AS motorbike_registration, profile_photo_url AS profile_photo, CASE WHEN is_active THEN 'active'::rider_status ELSE 'suspended'::rider_status END AS status, NULL::float8 AS current_lat, NULL::float8 AS current_lng, 0 AS total_deliveries, 0 AS completed_deliveries, 0 AS failed_deliveries, 0.0::float8 AS performance_score, 0.0::float8 AS total_revenue, created_at, COALESCE(updated_at, created_at) AS updated_at FROM riders WHERE id = $1",
+        &format!("SELECT {} FROM riders WHERE id = $1", RIDER_SELECT),
     )
     .bind(id)
     .fetch_optional(state.db.as_ref())
@@ -57,11 +59,20 @@ pub async fn create_rider(
     state: web::Data<AppState>,
     req: web::Json<CreateRiderRequest>,
 ) -> Result<HttpResponse, Error> {
+    // Hash the password using bcrypt
+    let password_hash = bcrypt::hash(&req.password, bcrypt::DEFAULT_COST)
+        .map_err(|e| {
+            log::error!("Failed to hash password: {}", e);
+            actix_web::error::ErrorInternalServerError("Failed to hash password")
+        })?;
+    
     let rider = sqlx::query_as::<_, Rider>(
-        "INSERT INTO riders (full_name, phone, national_id, motorbike_plate, profile_photo_url, is_active, is_verified, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, true, false, NOW(), NOW()) RETURNING id, full_name, phone AS phone_number, COALESCE(national_id, '') AS national_id, '' AS address, COALESCE(motorbike_plate, '') AS motorbike_registration, profile_photo_url AS profile_photo, CASE WHEN is_active THEN 'active'::rider_status ELSE 'suspended'::rider_status END AS status, NULL::float8 AS current_lat, NULL::float8 AS current_lng, 0 AS total_deliveries, 0 AS completed_deliveries, 0 AS failed_deliveries, 0.0::float8 AS performance_score, 0.0::float8 AS total_revenue, created_at, COALESCE(updated_at, created_at) AS updated_at",
+        &format!("INSERT INTO riders (full_name, phone, email, password_hash, national_id, motorbike_plate, profile_photo_url, is_active, is_verified, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, true, true, NOW(), NOW()) RETURNING {}", RIDER_SELECT),
     )
     .bind(&req.full_name)
     .bind(&req.phone_number)
+    .bind(&req.email)
+    .bind(&password_hash)
     .bind(&req.national_id)
     .bind(&req.motorbike_registration)
     .bind(&req.profile_photo)
@@ -75,8 +86,8 @@ pub async fn create_rider(
                 "INSERT INTO notifications (notification_type, title, message, reference_id, is_read, created_at) VALUES ($1::notification_type, $2, $3, $4, false, NOW())"
             )
             .bind("new_rider_registration")
-            .bind("New Rider Registration")
-            .bind(format!("{} has completed rider registration and is awaiting approval.", r.full_name))
+            .bind("New Rider Created")
+            .bind(format!("Rider {} has been created with email {}.", r.full_name, r.email.as_ref().unwrap_or(&String::new())))
             .bind(r.id)
             .execute(state.db.as_ref())
             .await;
@@ -86,10 +97,12 @@ pub async fn create_rider(
         Err(e) => {
             log::error!("Failed to create rider: {}", e);
             let error_msg = e.to_string();
-            let user_message = if error_msg.contains("riders_phone_number_key") {
+            let user_message = if error_msg.contains("riders_phone_key") || error_msg.contains("riders_phone_number_key") {
                 "A rider with this phone number already exists"
             } else if error_msg.contains("riders_national_id_key") {
                 "A rider with this national ID already exists"
+            } else if error_msg.contains("riders_email_key") {
+                "A rider with this email already exists"
             } else {
                 "Failed to create rider"
             };
@@ -108,10 +121,11 @@ pub async fn update_rider(
     let id = path.into_inner();
     
     let rider = sqlx::query_as::<_, Rider>(
-        "UPDATE riders SET full_name = COALESCE($1, full_name), phone = COALESCE($2, phone), profile_photo_url = COALESCE($3, profile_photo_url), updated_at = NOW() WHERE id = $4 RETURNING id, full_name, phone AS phone_number, COALESCE(national_id, '') AS national_id, '' AS address, COALESCE(motorbike_plate, '') AS motorbike_registration, profile_photo_url AS profile_photo, CASE WHEN is_active THEN 'active'::rider_status ELSE 'suspended'::rider_status END AS status, NULL::float8 AS current_lat, NULL::float8 AS current_lng, 0 AS total_deliveries, 0 AS completed_deliveries, 0 AS failed_deliveries, 0.0::float8 AS performance_score, 0.0::float8 AS total_revenue, created_at, COALESCE(updated_at, created_at) AS updated_at",
+        &format!("UPDATE riders SET full_name = COALESCE($1, full_name), phone = COALESCE($2, phone), email = COALESCE($3, email), profile_photo_url = COALESCE($4, profile_photo_url), updated_at = NOW() WHERE id = $5 RETURNING {}", RIDER_SELECT),
     )
     .bind(&req.full_name)
     .bind(&req.phone_number)
+    .bind(&req.email)
     .bind(&req.profile_photo)
     .bind(id)
     .fetch_one(state.db.as_ref())
@@ -125,6 +139,42 @@ pub async fn update_rider(
     }
 }
 
+pub async fn update_rider_password(
+    state: web::Data<AppState>,
+    path: web::Path<Uuid>,
+    req: web::Json<UpdateRiderPasswordRequest>,
+) -> Result<HttpResponse, Error> {
+    let id = path.into_inner();
+    
+    // Hash the new password
+    let password_hash = bcrypt::hash(&req.password, bcrypt::DEFAULT_COST)
+        .map_err(|e| {
+            log::error!("Failed to hash password: {}", e);
+            actix_web::error::ErrorInternalServerError("Failed to hash password")
+        })?;
+    
+    let result = sqlx::query(
+        "UPDATE riders SET password_hash = $1, updated_at = NOW() WHERE id = $2"
+    )
+    .bind(&password_hash)
+    .bind(id)
+    .execute(state.db.as_ref())
+    .await;
+
+    match result {
+        Ok(_) => Ok(HttpResponse::Ok().json(serde_json::json!({
+            "message": "Password updated successfully",
+            "plain_password": req.password
+        }))),
+        Err(e) => {
+            log::error!("Failed to update rider password: {}", e);
+            Ok(HttpResponse::InternalServerError().json(serde_json::json!({
+                "error": "Failed to update password"
+            })))
+        }
+    }
+}
+
 pub async fn suspend_rider(
     state: web::Data<AppState>,
     path: web::Path<Uuid>,
@@ -132,7 +182,7 @@ pub async fn suspend_rider(
     let id = path.into_inner();
     
     let rider = sqlx::query_as::<_, Rider>(
-        "UPDATE riders SET is_active = false, updated_at = NOW() WHERE id = $1 RETURNING id, full_name, phone AS phone_number, COALESCE(national_id, '') AS national_id, '' AS address, COALESCE(motorbike_plate, '') AS motorbike_registration, profile_photo_url AS profile_photo, CASE WHEN is_active THEN 'active'::rider_status ELSE 'suspended'::rider_status END AS status, NULL::float8 AS current_lat, NULL::float8 AS current_lng, 0 AS total_deliveries, 0 AS completed_deliveries, 0 AS failed_deliveries, 0.0::float8 AS performance_score, 0.0::float8 AS total_revenue, created_at, COALESCE(updated_at, created_at) AS updated_at",
+        &format!("UPDATE riders SET is_active = false, updated_at = NOW() WHERE id = $1 RETURNING {}", RIDER_SELECT),
     )
     .bind(id)
     .fetch_one(state.db.as_ref())
@@ -165,7 +215,7 @@ pub async fn activate_rider(
     let id = path.into_inner();
     
     let rider = sqlx::query_as::<_, Rider>(
-        "UPDATE riders SET is_active = true, updated_at = NOW() WHERE id = $1 RETURNING id, full_name, phone AS phone_number, COALESCE(national_id, '') AS national_id, '' AS address, COALESCE(motorbike_plate, '') AS motorbike_registration, profile_photo_url AS profile_photo, CASE WHEN is_active THEN 'active'::rider_status ELSE 'suspended'::rider_status END AS status, NULL::float8 AS current_lat, NULL::float8 AS current_lng, 0 AS total_deliveries, 0 AS completed_deliveries, 0 AS failed_deliveries, 0.0::float8 AS performance_score, 0.0::float8 AS total_revenue, created_at, COALESCE(updated_at, created_at) AS updated_at",
+        &format!("UPDATE riders SET is_active = true, updated_at = NOW() WHERE id = $1 RETURNING {}", RIDER_SELECT),
     )
     .bind(id)
     .fetch_one(state.db.as_ref())
@@ -326,6 +376,10 @@ pub fn routes() -> actix_web::Scope {
             web::resource("/{id}")
                 .route(web::get().to(get_rider))
                 .route(web::put().to(update_rider))
+        )
+        .service(
+            web::resource("/{id}/password")
+                .route(web::put().to(update_rider_password))
         )
         .service(
             web::resource("/{id}/suspend")

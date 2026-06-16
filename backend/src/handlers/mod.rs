@@ -7,3 +7,4 @@ pub mod payments;
 pub mod settings;
 pub mod notifications;
 pub mod dashboard;
+pub mod collections;

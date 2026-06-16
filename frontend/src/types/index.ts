@@ -14,6 +14,8 @@ export type ExpenseCategory = 'fuel' | 'maintenance' | 'parking' | 'other'
 
 export type ExpenseStatus = 'pending' | 'approved' | 'rejected'
 
+export type CollectionStatus = 'pending' | 'collected' | 'not_collected'
+
 export type NotificationType = 
   | 'new_paid_delivery' 
   | 'failed_delivery' 
@@ -45,12 +47,19 @@ export interface Delivery {
   picked_up_at?: string
   delivered_at?: string
   failed_at?: string
+  collect_payment: boolean
+  amount_to_collect?: number
+  amount_collected?: number
+  collection_status?: CollectionStatus
+  collected_at?: string
+  rider_notes?: string
 }
 
 export interface Rider {
   id: string
   full_name: string
   phone_number: string
+  email?: string
   national_id: string
   address: string
   motorbike_registration: string
@@ -63,6 +72,7 @@ export interface Rider {
   failed_deliveries: number
   performance_score: number
   total_revenue: number
+  is_verified: boolean
   created_at: string
   updated_at: string
 }
@@ -210,4 +220,61 @@ export interface CompanySettings {
 export interface Settings {
   company: CompanySettings
   pricing_rules: PricingRule[]
+}
+
+export interface RiderCollection {
+  id: string
+  rider_id: string
+  delivery_id: string
+  amount_collected: number
+  amount_returned: number
+  collection_status: CollectionStatus
+  collected_at?: string
+  returned_at?: string
+  validated_by?: string
+  validated_at?: string
+  notes?: string
+  created_at: string
+  updated_at: string
+}
+
+export interface RiderCollectionWithDetails {
+  id: string
+  rider_id: string
+  rider_name: string
+  delivery_id: string
+  customer_name: string
+  amount_collected: number
+  amount_returned: number
+  collection_status: CollectionStatus
+  collected_at?: string
+  returned_at?: string
+  created_at: string
+}
+
+export interface RiderCollectionSummary {
+  rider_id: string
+  rider_name: string
+  total_collected: number
+  total_returned: number
+  outstanding_balance: number
+  collections_count: number
+}
+
+export interface CollectionLedger {
+  id: string
+  rider_id?: string
+  delivery_id?: string
+  action: string
+  amount: number
+  reference_id?: string
+  performed_by?: string
+  notes?: string
+  created_at: string
+}
+
+export interface ValidateReturnRequest {
+  rider_id: string
+  amount: number
+  notes?: string
 }

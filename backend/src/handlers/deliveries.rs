@@ -1,8 +1,14 @@
 use actix_web::{web, HttpResponse, Error};
 use crate::config::AppState;
 use crate::models::{CreateDeliveryRequest, UpdateDeliveryRequest, AssignRiderRequest, DeliveryListResponse, DeliveryFilter, DeliveryDetailsResponse, MerchantBasic, RiderBasic};
+use crate::services::pricing_service::PricingService;
 use uuid::Uuid;
 use chrono::Utc;
+use rand::Rng;
+
+fn generate_otp() -> String {
+    format!("{:04}", rand::thread_rng().gen_range(1000..9999))
+}
 
 const DELIVERY_SELECT: &str = "d.id, d.product_description, d.product_value::float8, d.delivery_cost::float8, d.distance_km::float8, d.customer_name, d.customer_phone, COALESCE(d.delivery_address_text, d.delivery_address) AS delivery_address, d.delivery_latitude::float8 AS delivery_lat, d.delivery_longitude::float8 AS delivery_lng, d.merchant_id, COALESCE(d.assigned_rider_id, d.rider_id) AS assigned_rider_id, LOWER(d.status::text)::delivery_status AS status, d.failure_reason, d.otp_code, d.otp_verified, d.created_at, d.paid_at, d.assigned_at, d.picked_up_at, d.delivered_at, d.failed_at";
 
@@ -220,6 +226,9 @@ pub async fn create_delivery(
     state: web::Data<AppState>,
     req: web::Json<CreateDeliveryRequest>,
 ) -> Result<HttpResponse, Error> {
+    let delivery_cost = PricingService::calculate_price(req.distance_km) as i64;
+    let otp_code = generate_otp();
+    
     let delivery = sqlx::query_as::<_, crate::models::Delivery>(
         &format!(
             "INSERT INTO deliveries (product_description, product_value, delivery_cost, distance_km, customer_name, customer_phone, delivery_address_text, merchant_id, status, otp_code, otp_verified, created_at, updated_at, delivery_id, currency, payment_method, payment_status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'awaiting_assignment', $9, false, $10, NOW(), gen_random_uuid()::text, 'FCFA', 'merchant_wallet', 'pending') RETURNING {}",
@@ -228,13 +237,13 @@ pub async fn create_delivery(
     )
     .bind(&req.product_description)
     .bind(req.product_value as i64)
-    .bind(1000i64)
+    .bind(delivery_cost)
     .bind(req.distance_km)
     .bind(&req.customer_name)
     .bind(&req.customer_phone)
     .bind(&req.delivery_address)
     .bind(req.merchant_id)
-    .bind("000000")
+    .bind(&otp_code)
     .bind(Utc::now())
     .fetch_one(state.db.as_ref())
     .await;
