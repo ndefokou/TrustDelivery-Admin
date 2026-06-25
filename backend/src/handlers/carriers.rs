@@ -1,19 +1,19 @@
 use actix_web::{web, HttpResponse, Error};
 use crate::config::AppState;
-use crate::models::{CreateRiderRequest, UpdateRiderRequest, UpdateRiderPasswordRequest, RiderListResponse, RiderFilter, Rider, Expense, CreateExpenseRequest, ReviewExpenseRequest};
+use crate::models::{CreateCarrierRequest, UpdateCarrierRequest, UpdateCarrierPasswordRequest, CarrierListResponse, CarrierFilter, Carrier, Expense, CreateExpenseRequest, ReviewExpenseRequest};
 use uuid::Uuid;
 
-const RIDER_SELECT: &str = "id, full_name, phone AS phone_number, email, COALESCE(national_id, '') AS national_id, '' AS address, COALESCE(motorbike_plate, '') AS motorbike_registration, profile_photo_url AS profile_photo, CASE WHEN is_active THEN 'active'::rider_status ELSE 'suspended'::rider_status END AS status, NULL::float8 AS current_lat, NULL::float8 AS current_lng, 0 AS total_deliveries, 0 AS completed_deliveries, 0 AS failed_deliveries, 0.0::float8 AS performance_score, 0.0::float8 AS total_revenue, COALESCE(is_verified, false) AS is_verified, created_at, COALESCE(updated_at, created_at) AS updated_at";
+const CARRIER_SELECT: &str = "id, company_name, phone, email, address, coverage_zones, max_capacity, base_fee, price_per_km, is_active, is_verified, total_deliveries, completed_deliveries, failed_deliveries, performance_score, total_revenue, created_at, updated_at";
 
-pub async fn list_riders(
+pub async fn list_carriers(
     state: web::Data<AppState>,
-    _query: web::Query<RiderFilter>,
+    _query: web::Query<CarrierFilter>,
 ) -> Result<HttpResponse, Error> {
     let page: i64 = 1;
     let per_page: i64 = 20;
     
-    let riders = sqlx::query_as::<_, Rider>(
-        &format!("SELECT {} FROM riders ORDER BY created_at DESC LIMIT $1 OFFSET $2", RIDER_SELECT),
+    let carriers = sqlx::query_as::<_, Carrier>(
+        &format!("SELECT {} FROM carriers ORDER BY created_at DESC LIMIT $1 OFFSET $2", CARRIER_SELECT),
     )
     .bind(per_page)
     .bind((page - 1) * per_page)
@@ -21,90 +21,84 @@ pub async fn list_riders(
     .await
     .unwrap_or_default();
 
-    let total: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM riders")
+    let total: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM carriers")
         .fetch_one(state.db.as_ref())
         .await
         .unwrap_or(0);
 
-    Ok(HttpResponse::Ok().json(RiderListResponse {
-        riders,
+    Ok(HttpResponse::Ok().json(CarrierListResponse {
+        carriers,
         total,
         page: page as i32,
         per_page: per_page as i32,
     }))
 }
 
-pub async fn get_rider(
+pub async fn get_carrier(
     state: web::Data<AppState>,
     path: web::Path<Uuid>,
 ) -> Result<HttpResponse, Error> {
     let id = path.into_inner();
     
-    let rider = sqlx::query_as::<_, Rider>(
-        &format!("SELECT {} FROM riders WHERE id = $1", RIDER_SELECT),
+    let carrier = sqlx::query_as::<_, Carrier>(
+        &format!("SELECT {} FROM carriers WHERE id = $1", CARRIER_SELECT),
     )
     .bind(id)
     .fetch_optional(state.db.as_ref())
     .await;
 
-    match rider {
-        Ok(Some(r)) => Ok(HttpResponse::Ok().json(r)),
+    match carrier {
+        Ok(Some(c)) => Ok(HttpResponse::Ok().json(c)),
         _ => Ok(HttpResponse::NotFound().json(serde_json::json!({
-            "error": "Rider not found"
+            "error": "Carrier not found"
         }))),
     }
 }
 
-pub async fn create_rider(
+pub async fn create_carrier(
     state: web::Data<AppState>,
-    req: web::Json<CreateRiderRequest>,
+    req: web::Json<CreateCarrierRequest>,
 ) -> Result<HttpResponse, Error> {
-    // Hash the password using bcrypt
     let password_hash = bcrypt::hash(&req.password, bcrypt::DEFAULT_COST)
         .map_err(|e| {
             log::error!("Failed to hash password: {}", e);
             actix_web::error::ErrorInternalServerError("Failed to hash password")
         })?;
     
-    let rider = sqlx::query_as::<_, Rider>(
-        &format!("INSERT INTO riders (full_name, phone, email, password_hash, national_id, motorbike_plate, profile_photo_url, is_active, is_verified, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, true, true, NOW(), NOW()) RETURNING {}", RIDER_SELECT),
+    let carrier = sqlx::query_as::<_, Carrier>(
+        &format!("INSERT INTO carriers (company_name, phone, email, password_hash, address, is_active, is_verified, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, true, true, NOW(), NOW()) RETURNING {}", CARRIER_SELECT),
     )
-    .bind(&req.full_name)
-    .bind(&req.phone_number)
+    .bind(&req.company_name)
+    .bind(&req.phone)
     .bind(&req.email)
     .bind(&password_hash)
-    .bind(&req.national_id)
-    .bind(&req.motorbike_registration)
-    .bind(&req.profile_photo)
+    .bind(&req.address)
     .fetch_one(state.db.as_ref())
     .await;
 
-    match rider {
-        Ok(r) => {
-            // Create notification for new rider registration
+    match carrier {
+        Ok(c) => {
             let _ = sqlx::query(
                 "INSERT INTO notifications (notification_type, title, message, reference_id, is_read, created_at) VALUES ($1::notification_type, $2, $3, $4, false, NOW())"
             )
-            .bind("new_rider_registration")
-            .bind("New Rider Created")
-            .bind(format!("Rider {} has been created with email {}.", r.full_name, r.email.as_ref().unwrap_or(&String::new())))
-            .bind(r.id)
+            .bind("new_carrier_registration")
+            .bind("New Carrier Created")
+            .bind(format!("Carrier {} has been created with email {}.", c.company_name, c.email.as_ref().unwrap_or(&String::new())))
+            .bind(c.id)
             .execute(state.db.as_ref())
             .await;
 
-            Ok(HttpResponse::Created().json(r))
+            Ok(HttpResponse::Created().json(c))
         },
         Err(e) => {
-            log::error!("Failed to create rider: {}", e);
+            log::error!("Failed to create carrier: {}", e);
             let error_msg = e.to_string();
-            let user_message = if error_msg.contains("riders_phone_key") || error_msg.contains("riders_phone_number_key") {
-                "A rider with this phone number already exists"
-            } else if error_msg.contains("riders_national_id_key") {
-                "A rider with this national ID already exists"
-            } else if error_msg.contains("riders_email_key") {
-                "A rider with this email already exists"
+            let user_message = if error_msg.contains("carriers_phone_key") || error_msg.contains("carriers_phone_number_key") {
+                "A carrier with this phone number already exists"
+            } else if error_msg.contains("carriers_email_key") {
+                "A carrier with this email already exists"
             } else {
-                "Failed to create rider"
+                "Failed to create carrier"
             };
             Ok(HttpResponse::BadRequest().json(serde_json::json!({
                 "error": user_message
@@ -113,40 +107,39 @@ pub async fn create_rider(
     }
 }
 
-pub async fn update_rider(
+pub async fn update_carrier(
     state: web::Data<AppState>,
     path: web::Path<Uuid>,
-    req: web::Json<UpdateRiderRequest>,
+    req: web::Json<UpdateCarrierRequest>,
 ) -> Result<HttpResponse, Error> {
     let id = path.into_inner();
     
-    let rider = sqlx::query_as::<_, Rider>(
-        &format!("UPDATE riders SET full_name = COALESCE($1, full_name), phone = COALESCE($2, phone), email = COALESCE($3, email), profile_photo_url = COALESCE($4, profile_photo_url), updated_at = NOW() WHERE id = $5 RETURNING {}", RIDER_SELECT),
+    let carrier = sqlx::query_as::<_, Carrier>(
+        &format!("UPDATE carriers SET company_name = COALESCE($1, company_name), phone = COALESCE($2, phone), email = COALESCE($3, email), address = COALESCE($4, address), updated_at = NOW() WHERE id = $5 RETURNING {}", CARRIER_SELECT),
     )
-    .bind(&req.full_name)
-    .bind(&req.phone_number)
+    .bind(&req.company_name)
+    .bind(&req.phone)
     .bind(&req.email)
-    .bind(&req.profile_photo)
+    .bind(&req.address)
     .bind(id)
     .fetch_one(state.db.as_ref())
     .await;
 
-    match rider {
-        Ok(r) => Ok(HttpResponse::Ok().json(r)),
+    match carrier {
+        Ok(c) => Ok(HttpResponse::Ok().json(c)),
         _ => Ok(HttpResponse::NotFound().json(serde_json::json!({
-            "error": "Rider not found"
+            "error": "Carrier not found"
         }))),
     }
 }
 
-pub async fn update_rider_password(
+pub async fn update_carrier_password(
     state: web::Data<AppState>,
     path: web::Path<Uuid>,
-    req: web::Json<UpdateRiderPasswordRequest>,
+    req: web::Json<UpdateCarrierPasswordRequest>,
 ) -> Result<HttpResponse, Error> {
     let id = path.into_inner();
     
-    // Hash the new password
     let password_hash = bcrypt::hash(&req.password, bcrypt::DEFAULT_COST)
         .map_err(|e| {
             log::error!("Failed to hash password: {}", e);
@@ -154,7 +147,7 @@ pub async fn update_rider_password(
         })?;
     
     let result = sqlx::query(
-        "UPDATE riders SET password_hash = $1, updated_at = NOW() WHERE id = $2"
+        "UPDATE carriers SET password_hash = $1, updated_at = NOW() WHERE id = $2"
     )
     .bind(&password_hash)
     .bind(id)
@@ -167,7 +160,7 @@ pub async fn update_rider_password(
             "plain_password": req.password
         }))),
         Err(e) => {
-            log::error!("Failed to update rider password: {}", e);
+            log::error!("Failed to update carrier password: {}", e);
             Ok(HttpResponse::InternalServerError().json(serde_json::json!({
                 "error": "Failed to update password"
             })))
@@ -175,68 +168,68 @@ pub async fn update_rider_password(
     }
 }
 
-pub async fn suspend_rider(
+pub async fn suspend_carrier(
     state: web::Data<AppState>,
     path: web::Path<Uuid>,
 ) -> Result<HttpResponse, Error> {
     let id = path.into_inner();
     
-    let rider = sqlx::query_as::<_, Rider>(
-        &format!("UPDATE riders SET is_active = false, updated_at = NOW() WHERE id = $1 RETURNING {}", RIDER_SELECT),
+    let carrier = sqlx::query_as::<_, Carrier>(
+        &format!("UPDATE carriers SET is_active = false, updated_at = NOW() WHERE id = $1 RETURNING {}", CARRIER_SELECT),
     )
     .bind(id)
     .fetch_one(state.db.as_ref())
     .await;
 
-    match rider {
-        Ok(r) => {
+    match carrier {
+        Ok(c) => {
             let _ = sqlx::query(
                 "INSERT INTO notifications (notification_type, title, message, reference_id, is_read, created_at) VALUES ($1::notification_type, $2, $3, $4, false, NOW())"
             )
-            .bind("new_rider_registration")
-            .bind("Rider Suspended")
-            .bind(format!("Rider {} has been suspended by admin.", r.full_name))
-            .bind(r.id)
+            .bind("new_carrier_registration")
+            .bind("Carrier Suspended")
+            .bind(format!("Carrier {} has been suspended by admin.", c.company_name))
+            .bind(c.id)
             .execute(state.db.as_ref())
             .await;
 
-            Ok(HttpResponse::Ok().json(r))
+            Ok(HttpResponse::Ok().json(c))
         },
         _ => Ok(HttpResponse::NotFound().json(serde_json::json!({
-            "error": "Rider not found"
+            "error": "Carrier not found"
         }))),
     }
 }
 
-pub async fn activate_rider(
+pub async fn activate_carrier(
     state: web::Data<AppState>,
     path: web::Path<Uuid>,
 ) -> Result<HttpResponse, Error> {
     let id = path.into_inner();
     
-    let rider = sqlx::query_as::<_, Rider>(
-        &format!("UPDATE riders SET is_active = true, updated_at = NOW() WHERE id = $1 RETURNING {}", RIDER_SELECT),
+    let carrier = sqlx::query_as::<_, Carrier>(
+        &format!("UPDATE carriers SET is_active = true, updated_at = NOW() WHERE id = $1 RETURNING {}", CARRIER_SELECT),
     )
     .bind(id)
     .fetch_one(state.db.as_ref())
     .await;
 
-    match rider {
-        Ok(r) => {
+    match carrier {
+        Ok(c) => {
             let _ = sqlx::query(
                 "INSERT INTO notifications (notification_type, title, message, reference_id, is_read, created_at) VALUES ($1::notification_type, $2, $3, $4, false, NOW())"
             )
-            .bind("new_rider_registration")
-            .bind("Rider Activated")
-            .bind(format!("Rider {} has been activated by admin.", r.full_name))
-            .bind(r.id)
+            .bind("new_carrier_registration")
+            .bind("Carrier Activated")
+            .bind(format!("Carrier {} has been activated by admin.", c.company_name))
+            .bind(c.id)
             .execute(state.db.as_ref())
             .await;
 
-            Ok(HttpResponse::Ok().json(r))
+            Ok(HttpResponse::Ok().json(c))
         },
         _ => Ok(HttpResponse::NotFound().json(serde_json::json!({
-            "error": "Rider not found"
+            "error": "Carrier not found"
         }))),
     }
 }
@@ -245,11 +238,11 @@ pub async fn list_expenses(
     state: web::Data<AppState>,
     path: web::Path<Uuid>,
 ) -> Result<HttpResponse, Error> {
-    let rider_id = path.into_inner();
+    let carrier_id = path.into_inner();
     let expenses = sqlx::query_as::<_, Expense>(
-        "SELECT id, rider_id, category, amount::float8, description, receipt_url AS receipt_image, status, rejection_reason AS admin_notes, created_at, reviewed_at, reviewed_by FROM expenses WHERE rider_id = $1 ORDER BY created_at DESC LIMIT 50",
+        "SELECT id, carrier_id, category, amount::float8, description, receipt_url AS receipt_image, status, rejection_reason AS admin_notes, created_at, reviewed_at, reviewed_by FROM expenses WHERE carrier_id = $1 ORDER BY created_at DESC LIMIT 50",
     )
-    .bind(rider_id)
+    .bind(carrier_id)
     .fetch_all(state.db.as_ref())
     .await
     .unwrap_or_default();
@@ -260,8 +253,8 @@ pub async fn list_expenses(
 pub async fn list_all_expenses(
     state: web::Data<AppState>,
 ) -> Result<HttpResponse, Error> {
-    let expenses = sqlx::query_as::<_, crate::models::ExpenseWithRider>(
-        "SELECT e.id, e.rider_id, r.full_name as rider_name, e.category, e.amount::float8, e.description, e.receipt_url AS receipt_image, e.status, e.rejection_reason AS admin_notes, e.created_at, e.reviewed_at, e.reviewed_by FROM expenses e JOIN riders r ON e.rider_id = r.id ORDER BY e.created_at DESC LIMIT 50",
+    let expenses = sqlx::query_as::<_, crate::models::ExpenseWithCarrier>(
+        "SELECT e.id, e.carrier_id, r.company_name as carrier_name, e.category, e.amount::float8, e.description, e.receipt_url AS receipt_image, e.status, e.rejection_reason AS admin_notes, e.created_at, e.reviewed_at, e.reviewed_by FROM expenses e JOIN carriers r ON e.carrier_id = r.id ORDER BY e.created_at DESC LIMIT 50",
     )
     .fetch_all(state.db.as_ref())
     .await
@@ -275,9 +268,9 @@ pub async fn create_expense(
     req: web::Json<CreateExpenseRequest>,
 ) -> Result<HttpResponse, Error> {
     let expense = sqlx::query_as::<_, Expense>(
-        "INSERT INTO expenses (rider_id, category, amount, description, receipt_url, status, created_at) VALUES ($1, $2::expense_category, $3, $4, $5, 'pending'::expense_status, NOW()) RETURNING id, rider_id, category, amount::float8, description, receipt_url AS receipt_image, status, rejection_reason AS admin_notes, created_at, reviewed_at, reviewed_by",
+        "INSERT INTO expenses (carrier_id, category, amount, description, receipt_url, status, created_at) VALUES ($1, $2::expense_category, $3, $4, $5, 'pending'::expense_status, NOW()) RETURNING id, carrier_id, category, amount::float8, description, receipt_url AS receipt_image, status, rejection_reason AS admin_notes, created_at, reviewed_at, reviewed_by",
     )
-    .bind(req.rider_id)
+    .bind(req.carrier_id)
     .bind(&req.category)
     .bind(req.amount)
     .bind(&req.description)
@@ -287,7 +280,6 @@ pub async fn create_expense(
 
     match expense {
         Ok(e) => {
-            // Create notification for expense submission
             let _ = sqlx::query(
                 "INSERT INTO notifications (notification_type, title, message, reference_id, is_read, created_at) VALUES ($1::notification_type, $2, $3, $4, false, NOW())"
             )
@@ -314,7 +306,7 @@ pub async fn review_expense(
     let expense_id = path.into_inner();
     
     let expense = sqlx::query_as::<_, Expense>(
-        "UPDATE expenses SET status = $1::expense_status, rejection_reason = $2, reviewed_at = NOW() WHERE id = $3 RETURNING id, rider_id, category, amount::float8, description, receipt_url AS receipt_image, status, rejection_reason AS admin_notes, created_at, reviewed_at, reviewed_by",
+        "UPDATE expenses SET status = $1::expense_status, rejection_reason = $2, reviewed_at = NOW() WHERE id = $3 RETURNING id, carrier_id, category, amount::float8, description, receipt_url AS receipt_image, status, rejection_reason AS admin_notes, created_at, reviewed_at, reviewed_by",
     )
     .bind(&req.status)
     .bind(&req.admin_notes)
@@ -342,26 +334,26 @@ pub async fn review_expense(
     }
 }
 
-pub async fn rider_performance(
+pub async fn carrier_performance(
     state: web::Data<AppState>,
 ) -> Result<HttpResponse, Error> {
-    let riders = sqlx::query_as::<_, crate::models::TopRider>(
-        "SELECT ROW_NUMBER() OVER (ORDER BY COUNT(*) FILTER (WHERE LOWER(d.status::text) = 'delivered') DESC)::int4 as rank, r.full_name as rider_name, COUNT(*) FILTER (WHERE LOWER(d.status::text) = 'delivered')::int4 as deliveries_completed, CASE WHEN COUNT(*) > 0 THEN (COUNT(*) FILTER (WHERE LOWER(d.status::text) = 'delivered')::float8 / COUNT(*)::float8) * 100 ELSE 0 END as success_rate, COALESCE(SUM(COALESCE(d.delivery_fee, 0)), 0)::float8 as revenue_generated FROM riders r LEFT JOIN deliveries d ON COALESCE(d.assigned_rider_id, d.rider_id) = r.id GROUP BY r.id, r.full_name HAVING COUNT(*) > 0 ORDER BY deliveries_completed DESC LIMIT 8"
+    let carriers = sqlx::query_as::<_, crate::models::TopCarrier>(
+        "SELECT ROW_NUMBER() OVER (ORDER BY COUNT(*) FILTER (WHERE LOWER(d.status::text) = 'delivered') DESC)::int4 as rank, r.company_name as carrier_name, COUNT(*) FILTER (WHERE LOWER(d.status::text) = 'delivered')::int4 as deliveries_completed, CASE WHEN COUNT(*) > 0 THEN (COUNT(*) FILTER (WHERE LOWER(d.status::text) = 'delivered')::float8 / COUNT(*)::float8) * 100 ELSE 0 END as success_rate, COALESCE(SUM(COALESCE(d.delivery_fee, 0)), 0)::float8 as revenue_generated FROM carriers r LEFT JOIN deliveries d ON COALESCE(d.assigned_carrier_id, d.carrier_id) = r.id GROUP BY r.id, r.company_name HAVING COUNT(*) > 0 ORDER BY deliveries_completed DESC LIMIT 8"
     )
     .fetch_all(state.db.as_ref())
     .await
     .unwrap_or_default();
 
-    Ok(HttpResponse::Ok().json(riders))
+    Ok(HttpResponse::Ok().json(carriers))
 }
 
 pub fn routes() -> actix_web::Scope {
-    web::scope("/api/riders")
-        .route("", web::get().to(list_riders))
-        .route("", web::post().to(create_rider))
+    web::scope("/api/carriers")
+        .route("", web::get().to(list_carriers))
+        .route("", web::post().to(create_carrier))
         .service(
             web::resource("/performance")
-                .route(web::get().to(rider_performance))
+                .route(web::get().to(carrier_performance))
         )
         .service(
             web::resource("/expenses")
@@ -374,20 +366,20 @@ pub fn routes() -> actix_web::Scope {
         )
         .service(
             web::resource("/{id}")
-                .route(web::get().to(get_rider))
-                .route(web::put().to(update_rider))
+                .route(web::get().to(get_carrier))
+                .route(web::put().to(update_carrier))
         )
         .service(
             web::resource("/{id}/password")
-                .route(web::put().to(update_rider_password))
+                .route(web::put().to(update_carrier_password))
         )
         .service(
             web::resource("/{id}/suspend")
-                .route(web::post().to(suspend_rider))
+                .route(web::post().to(suspend_carrier))
         )
         .service(
             web::resource("/{id}/activate")
-                .route(web::post().to(activate_rider))
+                .route(web::post().to(activate_carrier))
         )
         .service(
             web::resource("/{id}/expenses")

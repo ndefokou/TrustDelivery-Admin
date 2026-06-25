@@ -1,35 +1,38 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useDelivery, useRiders, useAssignRider, useCancelDelivery, useRider, useMerchant } from '../hooks/useApi'
+import { useDelivery, useCarriers, useAssignCarrier, useCancelDelivery } from '../hooks/useApi'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { Select } from '../components/ui/Input'
 import { StatusBadge } from '../components/ui/Badge'
 import { Modal } from '../components/ui/Modal'
-import { ArrowLeft, MapPin, Phone, User, Package, CheckCircle, Clock } from 'lucide-react'
+import { ArrowLeft, MapPin, Phone, User, Package, CheckCircle, Clock, Truck, Store } from 'lucide-react'
 import { format } from 'date-fns'
 
 export default function DeliveryDetails() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { data: delivery, isLoading } = useDelivery(id!)
-  const { data: riders } = useRiders()
-  const { data: merchant } = useMerchant(delivery?.merchant_id || '')
-  const { data: rider } = useRider(delivery?.assigned_rider_id || '')
-  const assignRider = useAssignRider()
+  const { data: deliveryData, isLoading, error } = useDelivery(id!)
+  const { data: carriers } = useCarriers()
+  
+  const delivery = deliveryData?.delivery
+  const merchant = deliveryData?.merchant
+  const carrier = deliveryData?.carrier
+  
+  const assignCarrier = useAssignCarrier()
   const cancelDelivery = useCancelDelivery()
 
   const [showAssignModal, setShowAssignModal] = useState(false)
-  const [selectedRider, setSelectedRider] = useState('')
+  const [selectedCarrier, setSelectedCarrier] = useState('')
 
   const handleAssign = async () => {
-    if (!id || !selectedRider) return
+    if (!id || !selectedCarrier) return
     try {
-      await assignRider.mutateAsync({ deliveryId: id, riderId: selectedRider })
+      await assignCarrier.mutateAsync({ deliveryId: id, carrierId: selectedCarrier })
       setShowAssignModal(false)
-      setSelectedRider('')
+      setSelectedCarrier('')
     } catch (error) {
-      console.error('Failed to assign rider:', error)
+      console.error('Failed to assign carrier:', error)
     }
   }
 
@@ -53,10 +56,10 @@ export default function DeliveryDetails() {
     )
   }
 
-  if (!delivery) {
+  if (error || !delivery?.id) {
     return (
       <div className="text-center py-8">
-        <p className="text-gray-500">Delivery not found</p>
+        <p className="text-gray-500">{error ? 'Error loading delivery' : 'Delivery not found'}</p>
         <Button onClick={() => navigate('/deliveries')} className="mt-4">Back to Deliveries</Button>
       </div>
     )
@@ -114,11 +117,79 @@ export default function DeliveryDetails() {
                 </div>
                 <div>
                   <p className="text-xs sm:text-sm text-gray-500">Distance</p>
-                  <p className="text-sm sm:text-base">{delivery.distance_km.toFixed(2)} km</p>
+                  <p className="text-sm sm:text-base">
+                    {delivery.distance_km > 0 ? `${delivery.distance_km.toFixed(2)} km` : 'Calculating...'}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs sm:text-sm text-gray-500">OTP Code</p>
                   <p className="font-mono text-sm sm:text-lg">{delivery.otp_code}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Store size={20} />
+                Pickup Location
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div>
+                  <p className="text-sm text-gray-500">Merchant</p>
+                  <p className="font-medium">{merchant?.business_name || 'Unknown Merchant'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Address</p>
+                  <p className="flex items-start gap-2">
+                    <MapPin size={16} className="text-secondary flex-shrink-0 mt-0.5" />
+                    <span>{merchant?.address || 'Address not available'}</span>
+                  </p>
+                </div>
+                {merchant?.dispatch_latitude && merchant?.dispatch_longitude && (
+                  <div>
+                    <p className="text-sm text-gray-500">Coordinates</p>
+                    <p className="text-sm font-mono">
+                      {merchant.dispatch_latitude.toFixed(6)}, {merchant.dispatch_longitude.toFixed(6)}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Truck size={20} />
+                Delivery Location
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div>
+                  <p className="text-sm text-gray-500">Address</p>
+                  <p className="flex items-start gap-2">
+                    <MapPin size={16} className="text-secondary flex-shrink-0 mt-0.5" />
+                    <span>{delivery.delivery_address}</span>
+                  </p>
+                </div>
+                {delivery.delivery_lat && delivery.delivery_lng && (
+                  <div>
+                    <p className="text-sm text-gray-500">Coordinates</p>
+                    <p className="text-sm font-mono">
+                      {delivery.delivery_lat.toFixed(6)}, {delivery.delivery_lng.toFixed(6)}
+                    </p>
+                  </div>
+                )}
+                <div>
+                  <p className="text-sm text-gray-500">Distance from Pickup</p>
+                  <p className="font-medium text-secondary">
+                    {delivery.distance_km > 0 ? `${delivery.distance_km.toFixed(2)} km` : 'Not calculated'}
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -142,13 +213,6 @@ export default function DeliveryDetails() {
                   <p className="font-medium flex items-center gap-2">
                     <Phone size={16} />
                     {delivery.customer_phone}
-                  </p>
-                </div>
-                <div className="col-span-1 sm:col-span-2">
-                  <p className="text-sm text-gray-500">Delivery Address</p>
-                  <p className="flex items-start gap-2">
-                    <MapPin size={16} className="text-secondary flex-shrink-0 mt-0.5" />
-                    <span>{delivery.delivery_address}</span>
                   </p>
                 </div>
               </div>
@@ -190,21 +254,10 @@ export default function DeliveryDetails() {
         </div>
 
         <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Merchant</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="font-medium">{merchant?.business_name || 'Merchant Name'}</p>
-              <p className="text-sm text-gray-500">{merchant?.email || 'merchant@example.com'}</p>
-              <p className="text-sm text-gray-500">{merchant?.phone_number || '+237 6XX XXX XXX'}</p>
-            </CardContent>
-          </Card>
-
-          {delivery.assigned_rider_id && (
+          {delivery.assigned_carrier_id && (
             <Card>
               <CardHeader>
-                <CardTitle>Assigned Rider</CardTitle>
+                <CardTitle>Assigned Carrier</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center gap-3">
@@ -212,8 +265,8 @@ export default function DeliveryDetails() {
                     <User size={24} className="text-white" />
                   </div>
                   <div>
-                    <p className="font-medium">{rider?.full_name || 'Rider Name'}</p>
-                    <p className="text-sm text-gray-500">{rider?.phone_number || '+237 6XX XXX XXX'}</p>
+                    <p className="font-medium">{carrier?.company_name || 'Unknown Carrier'}</p>
+                    <p className="text-sm text-gray-500">{carrier?.phone || 'N/A'}</p>
                   </div>
                 </div>
                 <div className="mt-4">
@@ -228,11 +281,11 @@ export default function DeliveryDetails() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Actions</CardTitle>
+              <CardTitle>Timeline</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               {delivery.status === 'awaiting_assignment' && (
-                <Button className="w-full" onClick={() => setShowAssignModal(true)}>Assign Rider</Button>
+                <Button className="w-full" onClick={() => setShowAssignModal(true)}>Assign Carrier</Button>
               )}
               <Button className="w-full" variant="secondary" onClick={() => window.print()}>Print Receipt</Button>
               <Button className="w-full" variant="danger" disabled={delivery.status === 'delivered' || cancelDelivery.isPending} onClick={handleCancel}>
@@ -245,29 +298,29 @@ export default function DeliveryDetails() {
 
       <Modal
         isOpen={showAssignModal}
-        onClose={() => { setShowAssignModal(false); setSelectedRider('') }}
-        title="Assign Rider"
+        onClose={() => { setShowAssignModal(false); setSelectedCarrier('') }}
+        title="Assign Carrier"
       >
         <div className="space-y-4">
           <p className="text-gray-600 dark:text-gray-400">
-            Select a rider to assign to this delivery.
+            Select a carrier to assign to this delivery.
           </p>
           <Select
-            label="Select Rider"
-            value={selectedRider}
-            onChange={(e) => setSelectedRider(e.target.value)}
+            label="Select Carrier"
+            value={selectedCarrier}
+            onChange={(e) => setSelectedCarrier(e.target.value)}
           >
-            <option value="">Choose a rider...</option>
-            {riders?.riders?.filter((r: any) => r.status === 'active').map((rider: any) => (
-              <option key={rider.id} value={rider.id}>
-                {rider.full_name} - {rider.completed_deliveries} completed
+            <option value="">Choose a carrier...</option>
+            {carriers?.carriers.filter((r: any) => r.is_active).map((carrier: any) => (
+              <option key={carrier.id} value={carrier.id}>
+                {carrier.company_name} - {carrier.completed_deliveries || 0} completed
               </option>
             ))}
           </Select>
           <div className="flex gap-2 justify-end">
             <Button variant="secondary" onClick={() => setShowAssignModal(false)}>Cancel</Button>
-            <Button onClick={handleAssign} disabled={!selectedRider || assignRider.isPending}>
-              {assignRider.isPending ? 'Assigning...' : 'Assign Rider'}
+            <Button onClick={handleAssign} disabled={!selectedCarrier || assignCarrier.isPending}>
+              {assignCarrier.isPending ? 'Assigning...' : 'Assign Carrier'}
             </Button>
           </div>
         </div>

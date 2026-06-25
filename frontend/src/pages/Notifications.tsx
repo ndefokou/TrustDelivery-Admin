@@ -21,7 +21,7 @@ const notificationIcons: Record<NotificationType, React.ReactNode> = {
   failed_delivery: <XCircle className="text-danger" size={20} />,
   expense_submission: <Receipt className="text-warning" size={20} />,
   new_merchant_registration: <Store className="text-success" size={20} />,
-  new_rider_registration: <UserPlus className="text-secondary" size={20} />,
+  new_carrier_registration: <UserPlus className="text-secondary" size={20} />,
   delivery_assigned: <CheckCircle className="text-info" size={20} />,
 }
 
@@ -30,7 +30,7 @@ const notificationColors: Record<NotificationType, string> = {
   failed_delivery: 'bg-danger-50 dark:bg-danger-900',
   expense_submission: 'bg-warning-50 dark:bg-warning-900',
   new_merchant_registration: 'bg-success-50 dark:bg-success-900',
-  new_rider_registration: 'bg-secondary-50 dark:bg-secondary-900',
+  new_carrier_registration: 'bg-secondary-50 dark:bg-secondary-900',
   delivery_assigned: 'bg-info-50 dark:bg-info-900',
 }
 
@@ -57,11 +57,11 @@ export default function Notifications() {
       case 'delivery_assigned':
         return notification.reference_id ? `/deliveries/${notification.reference_id}` : '/deliveries'
       case 'expense_submission':
-        return '/riders'
+        return '/carriers'
       case 'new_merchant_registration':
         return notification.reference_id ? `/merchants/${notification.reference_id}` : '/merchants'
-      case 'new_rider_registration':
-        return notification.reference_id ? `/riders/${notification.reference_id}` : '/riders'
+      case 'new_carrier_registration':
+        return notification.reference_id ? `/carriers/${notification.reference_id}` : '/carriers'
       default:
         return '#'
     }

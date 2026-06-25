@@ -12,7 +12,7 @@ use std::env;
 use actix_web::web::Data;
 use config::app_state::AppState;
 use handlers::{
-    auth, deliveries, riders, merchants, reports, payments, settings, notifications, dashboard,
+    auth, deliveries, carriers, merchants, reports, payments, settings, notifications, dashboard,
     collections,
 };
 
@@ -42,7 +42,7 @@ async fn main() -> std::io::Result<()> {
             .wrap(Logger::default())
             .service(auth::routes())
             .service(deliveries::routes())
-            .service(riders::routes())
+            .service(carriers::routes())
             .service(merchants::routes())
             .service(reports::routes())
             .service(payments::routes())

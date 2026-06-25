@@ -1,7 +1,7 @@
 use actix_web::{web, HttpResponse, Scope};
 use serde::Serialize;
 use uuid::Uuid;
-use chrono::Utc;
+use bigdecimal::num_traits::ToPrimitive;
 
 use crate::config::AppState;
 
@@ -10,14 +10,14 @@ pub struct CollectionSummaryResponse {
     pub total_collected: f64,
     pub total_returned: f64,
     pub outstanding_balance: f64,
-    pub riders: Vec<RiderCollectionSummary>,
+    pub carriers: Vec<CarrierCollectionSummary>,
 }
 
 #[derive(Debug, Serialize)]
-pub struct RiderCollectionSummary {
-    pub rider_id: Uuid,
-    pub rider_name: String,
-    pub rider_phone: String,
+pub struct CarrierCollectionSummary {
+    pub carrier_id: Uuid,
+    pub carrier_name: String,
+    pub carrier_phone: String,
     pub total_collected: f64,
     pub total_returned: f64,
     pub outstanding_balance: f64,
@@ -33,8 +33,8 @@ pub struct CollectionHistoryResponse {
 #[derive(Debug, Serialize)]
 pub struct CollectionRecord {
     pub id: Uuid,
-    pub rider_id: Uuid,
-    pub rider_name: String,
+    pub carrier_id: Uuid,
+    pub carrier_name: String,
     pub delivery_id: Uuid,
     pub customer_name: String,
     pub amount_to_collect: f64,
@@ -46,7 +46,7 @@ pub struct CollectionRecord {
 
 #[derive(Debug, serde::Deserialize)]
 pub struct ValidateReturnRequest {
-    pub rider_id: Uuid,
+    pub carrier_id: Uuid,
     pub amount_returned: f64,
     pub notes: Option<String>,
 }
@@ -54,21 +54,21 @@ pub struct ValidateReturnRequest {
 pub async fn get_collection_summary(
     state: web::Data<AppState>,
 ) -> HttpResponse {
-    let result = sqlx::query!(
+    let rows = sqlx::query_as::<_, (Uuid, String, String, Option<sqlx::types::BigDecimal>, Option<sqlx::types::BigDecimal>, Option<i64>)>(
         r#"
         SELECT 
-            r.id as rider_id,
-            r.full_name as rider_name,
-            r.phone_number as rider_phone,
-            COALESCE(SUM(d.amount_to_collect), 0)::float8 as total_to_collect,
-            COALESCE(SUM(CASE WHEN d.collection_status = 'collected' THEN d.amount_to_collect ELSE 0 END), 0)::float8 as total_collected,
+            r.id as carrier_id,
+            r.company_name as carrier_name,
+            r.phone as carrier_phone,
+            COALESCE(SUM(d.amount_to_collect), 0) as total_to_collect,
+            COALESCE(SUM(CASE WHEN d.collection_status = 'collected' THEN d.amount_to_collect ELSE 0 END), 0) as total_collected,
             COUNT(CASE WHEN d.collect_payment = true AND d.collection_status = 'collected' THEN 1 END) as collections_count
-        FROM riders r
-        LEFT JOIN deliveries d ON COALESCE(d.assigned_rider_id, d.rider_id) = r.id 
+        FROM carriers r
+        LEFT JOIN deliveries d ON COALESCE(d.assigned_carrier_id, d.carrier_id) = r.id 
             AND d.collect_payment = true 
             AND d.status = 'delivered'
         WHERE r.is_active = true
-        GROUP BY r.id, r.full_name, r.phone_number
+        GROUP BY r.id, r.company_name, r.phone
         HAVING COUNT(CASE WHEN d.collect_payment = true AND d.collection_status = 'collected' THEN 1 END) > 0
         ORDER BY total_collected DESC
         "#
@@ -76,27 +76,31 @@ pub async fn get_collection_summary(
     .fetch_all(state.db.as_ref())
     .await;
 
-    match result {
+    match rows {
         Ok(rows) => {
-            let riders: Vec<RiderCollectionSummary> = rows.into_iter().map(|row| {
-                RiderCollectionSummary {
-                    rider_id: row.rider_id,
-                    rider_name: row.rider_name.unwrap_or_default(),
-                    rider_phone: row.rider_phone.unwrap_or_default(),
-                    total_collected: row.total_collected.unwrap_or(0.0),
+            let carriers: Vec<CarrierCollectionSummary> = rows.into_iter().map(|(carrier_id, carrier_name, carrier_phone, _total_to_collect, total_collected, collections_count)| {
+                let collected = total_collected
+                    .as_ref()
+                    .and_then(|v| v.to_f64())
+                    .unwrap_or(0.0);
+                CarrierCollectionSummary {
+                    carrier_id,
+                    carrier_name,
+                    carrier_phone,
+                    total_collected: collected,
                     total_returned: 0.0,
-                    outstanding_balance: row.total_collected.unwrap_or(0.0),
-                    collections_count: row.collections_count.unwrap_or(0) as i64,
+                    outstanding_balance: collected,
+                    collections_count: collections_count.unwrap_or(0),
                 }
             }).collect();
 
-            let total_collected: f64 = riders.iter().map(|r| r.total_collected).sum();
+            let total_collected: f64 = carriers.iter().map(|r| r.total_collected).sum();
             
             HttpResponse::Ok().json(CollectionSummaryResponse {
                 total_collected,
                 total_returned: 0.0,
                 outstanding_balance: total_collected,
-                riders,
+                carriers,
             })
         },
         Err(e) => {
@@ -108,13 +112,22 @@ pub async fn get_collection_summary(
     }
 }
 
-pub async fn get_rider_collections(
+pub async fn get_carrier_collections(
     state: web::Data<AppState>,
     path: web::Path<Uuid>,
 ) -> HttpResponse {
-    let rider_id = path.into_inner();
+    let carrier_id = path.into_inner();
 
-    let result = sqlx::query!(
+    let carrier_name_result: Result<String, _> = sqlx::query_scalar(
+        "SELECT company_name FROM carriers WHERE id = $1"
+    )
+    .bind(carrier_id)
+    .fetch_one(state.db.as_ref())
+    .await;
+
+    let carrier_name = carrier_name_result.unwrap_or_else(|_| "Unknown Carrier".to_string());
+
+    let records: Vec<CollectionRecord> = match sqlx::query_as::<_, (Uuid, String, Option<sqlx::types::BigDecimal>, Option<sqlx::types::BigDecimal>, Option<String>, Option<chrono::DateTime<chrono::Utc>>, Option<chrono::DateTime<chrono::Utc>>)>(
         r#"
         SELECT 
             d.id as delivery_id,
@@ -125,67 +138,54 @@ pub async fn get_rider_collections(
             d.collected_at,
             d.delivered_at as created_at
         FROM deliveries d
-        WHERE COALESCE(d.assigned_rider_id, d.rider_id) = $1 
+        WHERE COALESCE(d.assigned_carrier_id, d.carrier_id) = $1 
             AND d.collect_payment = true 
             AND d.status = 'delivered'
         ORDER BY d.delivered_at DESC
-        "#,
-        rider_id
+        "#
     )
+    .bind(carrier_id)
     .fetch_all(state.db.as_ref())
-    .await;
-
-    match result {
-        Ok(rows) => {
-            let rider_name_result = sqlx::query_scalar!(
-                "SELECT full_name FROM riders WHERE id = $1",
-                rider_id
-            )
-            .fetch_one(state.db.as_ref())
-            .await;
-
-            let rider_name = rider_name_result.unwrap_or_else(|_| "Unknown Rider".to_string());
-
-            let records: Vec<CollectionRecord> = rows.into_iter().map(|row| {
-                CollectionRecord {
-                    id: Uuid::new_v4(),
-                    rider_id,
-                    rider_name: rider_name.clone(),
-                    delivery_id: row.delivery_id,
-                    customer_name: row.customer_name.unwrap_or_default(),
-                    amount_to_collect: row.amount_to_collect.unwrap_or(0.0) as f64,
-                    amount_collected: row.amount_collected.map(|v| v as f64),
-                    collection_status: row.collection_status.unwrap_or_else(|| "pending".to_string()),
-                    collected_at: row.collected_at.map(|t| t.to_rfc3339()),
-                    created_at: row.created_at.map(|t| t.to_rfc3339()).unwrap_or_default(),
-                }
-            }).collect();
-
-            let total = records.len() as i64;
-
-            HttpResponse::Ok().json(CollectionHistoryResponse {
-                records,
-                total,
-            })
-        },
+    .await {
+        Ok(rows) => rows.into_iter().map(|(delivery_id, customer_name, amount_to_collect, amount_collected, collection_status, collected_at, created_at)| {
+            CollectionRecord {
+                id: Uuid::new_v4(),
+                carrier_id,
+                carrier_name: carrier_name.clone(),
+                delivery_id,
+                customer_name,
+                amount_to_collect: amount_to_collect.and_then(|v| v.to_f64()).unwrap_or(0.0),
+                amount_collected: amount_collected.and_then(|v| v.to_f64()),
+                collection_status: collection_status.unwrap_or_else(|| "pending".to_string()),
+                collected_at: collected_at.map(|t| t.to_rfc3339()),
+                created_at: created_at.map(|t| t.to_rfc3339()).unwrap_or_default(),
+            }
+        }).collect(),
         Err(e) => {
-            eprintln!("Error fetching rider collections: {}", e);
-            HttpResponse::InternalServerError().json(serde_json::json!({
+            eprintln!("Error fetching carrier collections: {}", e);
+            return HttpResponse::InternalServerError().json(serde_json::json!({
                 "error": format!("Database error: {}", e)
-            }))
+            }));
         }
-    }
+    };
+
+    let total = records.len() as i64;
+
+    HttpResponse::Ok().json(CollectionHistoryResponse {
+        records,
+        total,
+    })
 }
 
 pub async fn get_collection_history(
     state: web::Data<AppState>,
 ) -> HttpResponse {
-    let result = sqlx::query!(
+    let records: Vec<CollectionRecord> = match sqlx::query_as::<_, (Uuid, Option<Uuid>, String, String, Option<sqlx::types::BigDecimal>, Option<sqlx::types::BigDecimal>, Option<String>, Option<chrono::DateTime<chrono::Utc>>, Option<chrono::DateTime<chrono::Utc>>)>(
         r#"
         SELECT 
             d.id as delivery_id,
-            COALESCE(d.assigned_rider_id, d.rider_id) as rider_id,
-            r.full_name as rider_name,
+            COALESCE(d.assigned_carrier_id, d.carrier_id) as carrier_id,
+            r.company_name as carrier_name,
             d.customer_name,
             d.amount_to_collect,
             d.amount_collected,
@@ -193,7 +193,7 @@ pub async fn get_collection_history(
             d.collected_at,
             d.delivered_at as created_at
         FROM deliveries d
-        LEFT JOIN riders r ON r.id = COALESCE(d.assigned_rider_id, d.rider_id)
+        LEFT JOIN carriers r ON r.id = COALESCE(d.assigned_carrier_id, d.carrier_id)
         WHERE d.collect_payment = true 
             AND d.status = 'delivered'
         ORDER BY d.delivered_at DESC
@@ -201,57 +201,53 @@ pub async fn get_collection_history(
         "#
     )
     .fetch_all(state.db.as_ref())
-    .await;
-
-    match result {
-        Ok(rows) => {
-            let records: Vec<CollectionRecord> = rows.into_iter().map(|row| {
-                CollectionRecord {
-                    id: Uuid::new_v4(),
-                    rider_id: row.rider_id.unwrap_or_else(Uuid::nil),
-                    rider_name: row.rider_name.unwrap_or_else(|| "Unknown".to_string()),
-                    delivery_id: row.delivery_id,
-                    customer_name: row.customer_name.unwrap_or_default(),
-                    amount_to_collect: row.amount_to_collect.unwrap_or(0.0) as f64,
-                    amount_collected: row.amount_collected.map(|v| v as f64),
-                    collection_status: row.collection_status.unwrap_or_else(|| "pending".to_string()),
-                    collected_at: row.collected_at.map(|t| t.to_rfc3339()),
-                    created_at: row.created_at.map(|t| t.to_rfc3339()).unwrap_or_default(),
-                }
-            }).collect();
-
-            let total = records.len() as i64;
-
-            HttpResponse::Ok().json(CollectionHistoryResponse {
-                records,
-                total,
-            })
-        },
+    .await {
+        Ok(rows) => rows.into_iter().map(|(delivery_id, carrier_id, carrier_name, customer_name, amount_to_collect, amount_collected, collection_status, collected_at, created_at)| {
+            CollectionRecord {
+                id: Uuid::new_v4(),
+                carrier_id: carrier_id.unwrap_or_else(Uuid::nil),
+                carrier_name,
+                delivery_id,
+                customer_name,
+                amount_to_collect: amount_to_collect.and_then(|v| v.to_f64()).unwrap_or(0.0),
+                amount_collected: amount_collected.and_then(|v| v.to_f64()),
+                collection_status: collection_status.unwrap_or_else(|| "pending".to_string()),
+                collected_at: collected_at.map(|t| t.to_rfc3339()),
+                created_at: created_at.map(|t| t.to_rfc3339()).unwrap_or_default(),
+            }
+        }).collect(),
         Err(e) => {
             eprintln!("Error fetching collection history: {}", e);
-            HttpResponse::InternalServerError().json(serde_json::json!({
+            return HttpResponse::InternalServerError().json(serde_json::json!({
                 "error": format!("Database error: {}", e)
-            }))
+            }));
         }
-    }
+    };
+
+    let total = records.len() as i64;
+
+    HttpResponse::Ok().json(CollectionHistoryResponse {
+        records,
+        total,
+    })
 }
 
 pub async fn validate_return(
     state: web::Data<AppState>,
     body: web::Json<ValidateReturnRequest>,
 ) -> HttpResponse {
-    let result = sqlx::query!(
+    let result = sqlx::query(
         r#"
         UPDATE deliveries 
         SET collection_status = 'returned',
             amount_collected = amount_to_collect
-        WHERE COALESCE(assigned_rider_id, rider_id) = $1 
+        WHERE COALESCE(assigned_carrier_id, carrier_id) = $1 
             AND collect_payment = true 
             AND collection_status = 'collected'
             AND status = 'delivered'
-        "#,
-        body.rider_id
+        "#
     )
+    .bind(body.carrier_id)
     .execute(state.db.as_ref())
     .await;
 
@@ -259,7 +255,7 @@ pub async fn validate_return(
         Ok(_) => {
             HttpResponse::Ok().json(serde_json::json!({
                 "message": "Return validated successfully",
-                "rider_id": body.rider_id,
+                "carrier_id": body.carrier_id,
                 "amount_returned": body.amount_returned
             }))
         },
@@ -276,6 +272,6 @@ pub fn routes() -> Scope {
     web::scope("/api/collections")
         .route("/summary", web::get().to(get_collection_summary))
         .route("/history", web::get().to(get_collection_history))
-        .route("/rider/{id}", web::get().to(get_rider_collections))
+        .route("/carrier/{id}", web::get().to(get_carrier_collections))
         .route("/validate-return", web::post().to(validate_return))
 }

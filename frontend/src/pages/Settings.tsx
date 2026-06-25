@@ -3,7 +3,7 @@ import { useSettings, useUpdateSettings } from '../hooks/useApi'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
-import { Save, Building, DollarSign, Users } from 'lucide-react'
+import { Save, Building, DollarSign, Users, Settings2, ToggleLeft, ToggleRight } from 'lucide-react'
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState('company')
@@ -17,9 +17,20 @@ export default function Settings() {
     email: 'info@trustdelivery.cm',
   })
 
+  const [systemSettings, setSystemSettings] = useState({
+    auto_assignment: true,
+    commission_rate: 15,
+    fallback_enabled: true,
+    max_retry_assignments: 3,
+    increase_price_on_retry: true,
+    price_increase_percentage: 10,
+    notify_admin_on_failure: true,
+  })
+
   const [pricingRules, setPricingRules] = useState<any[]>([
-    { min_distance_km: 0, max_distance_km: 3, base_price: 1000, price_per_km: null },
-    { min_distance_km: 3, max_distance_km: 5, base_price: 1500, price_per_km: null },
+    { min_distance_km: 0, max_distance_km: 1, base_price: 1000, price_per_km: null },
+    { min_distance_km: 1, max_distance_km: 3, base_price: 1500, price_per_km: null },
+    { min_distance_km: 3, max_distance_km: 5, base_price: 2000, price_per_km: null },
     { min_distance_km: 5, max_distance_km: 10, base_price: 2500, price_per_km: null },
     { min_distance_km: 10, max_distance_km: 999, base_price: 3000, price_per_km: 200 },
   ])
@@ -41,6 +52,17 @@ export default function Settings() {
         }))
       )
     }
+    if ((settingsData as any)?.system) {
+      setSystemSettings({
+        auto_assignment: (settingsData as any).system.auto_assignment ?? true,
+        commission_rate: (settingsData as any).system.commission_rate ?? 15,
+        fallback_enabled: (settingsData as any).system.fallback_enabled ?? true,
+        max_retry_assignments: (settingsData as any).system.max_retry_assignments ?? 3,
+        increase_price_on_retry: (settingsData as any).system.increase_price_on_retry ?? true,
+        price_increase_percentage: (settingsData as any).system.price_increase_percentage ?? 10,
+        notify_admin_on_failure: (settingsData as any).system.notify_admin_on_failure ?? true,
+      })
+    }
   }, [settingsData])
 
   const handleSaveCompany = () => {
@@ -60,8 +82,15 @@ export default function Settings() {
     })
   }
 
+  const handleSaveSystem = () => {
+    updateSettings.mutate({
+      system: systemSettings,
+    } as any)
+  }
+
   const tabs = [
     { id: 'company', label: 'Company', icon: Building },
+    { id: 'system', label: 'System', icon: Settings2 },
     { id: 'pricing', label: 'Pricing', icon: DollarSign },
     { id: 'users', label: 'User Management', icon: Users },
   ]
@@ -137,6 +166,128 @@ export default function Settings() {
                 </div>
               </CardContent>
             </Card>
+          )}
+
+          {activeTab === 'system' && (
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Auto-Assignment Settings</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                    <div>
+                      <p className="font-medium">Auto Assignment</p>
+                      <p className="text-sm text-gray-500">Automatically assign deliveries to best carrier</p>
+                    </div>
+                    <button
+                      onClick={() => setSystemSettings({ ...systemSettings, auto_assignment: !systemSettings.auto_assignment })}
+                      className={`p-2 rounded-lg transition-colors ${systemSettings.auto_assignment ? 'bg-secondary text-white' : 'bg-gray-200 text-gray-500'}`}
+                    >
+                      {systemSettings.auto_assignment ? <ToggleRight size={24} /> : <ToggleLeft size={24} />}
+                    </button>
+                  </div>
+
+                  <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                    <div>
+                      <p className="font-medium">Fallback Enabled</p>
+                      <p className="text-sm text-gray-500">Retry with next best carrier if rejected</p>
+                    </div>
+                    <button
+                      onClick={() => setSystemSettings({ ...systemSettings, fallback_enabled: !systemSettings.fallback_enabled })}
+                      className={`p-2 rounded-lg transition-colors ${systemSettings.fallback_enabled ? 'bg-secondary text-white' : 'bg-gray-200 text-gray-500'}`}
+                    >
+                      {systemSettings.fallback_enabled ? <ToggleRight size={24} /> : <ToggleLeft size={24} />}
+                    </button>
+                  </div>
+
+                  <Input
+                    label="Max Retry Assignments"
+                    type="number"
+                    value={systemSettings.max_retry_assignments}
+                    onChange={(e) => setSystemSettings({ ...systemSettings, max_retry_assignments: parseInt(e.target.value) || 3 })}
+                  />
+                  <p className="text-sm text-gray-500 -mt-2">Number of carriers to try before declaring failure</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Fallback Behavior</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                    <div>
+                      <p className="font-medium">Increase Price on Retry</p>
+                      <p className="text-sm text-gray-500">Increase delivery price if carriers reject</p>
+                    </div>
+                    <button
+                      onClick={() => setSystemSettings({ ...systemSettings, increase_price_on_retry: !systemSettings.increase_price_on_retry })}
+                      className={`p-2 rounded-lg transition-colors ${systemSettings.increase_price_on_retry ? 'bg-secondary text-white' : 'bg-gray-200 text-gray-500'}`}
+                    >
+                      {systemSettings.increase_price_on_retry ? <ToggleRight size={24} /> : <ToggleLeft size={24} />}
+                    </button>
+                  </div>
+
+                  {systemSettings.increase_price_on_retry && (
+                    <>
+                      <Input
+                        label="Price Increase Percentage"
+                        type="number"
+                        value={systemSettings.price_increase_percentage}
+                        onChange={(e) => setSystemSettings({ ...systemSettings, price_increase_percentage: parseInt(e.target.value) || 10 })}
+                      />
+                      <p className="text-sm text-gray-500 -mt-2">Percentage to increase price when retrying</p>
+                    </>
+                  )}
+
+                  <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                    <div>
+                      <p className="font-medium">Notify Admin on Failure</p>
+                      <p className="text-sm text-gray-500">Send notification when carrier assignment fails</p>
+                    </div>
+                    <button
+                      onClick={() => setSystemSettings({ ...systemSettings, notify_admin_on_failure: !systemSettings.notify_admin_on_failure })}
+                      className={`p-2 rounded-lg transition-colors ${systemSettings.notify_admin_on_failure ? 'bg-secondary text-white' : 'bg-gray-200 text-gray-500'}`}
+                    >
+                      {systemSettings.notify_admin_on_failure ? <ToggleRight size={24} /> : <ToggleLeft size={24} />}
+                    </button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Commission Settings</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <Input
+                    label="Commission Rate (%)"
+                    type="number"
+                    value={systemSettings.commission_rate}
+                    onChange={(e) => setSystemSettings({ ...systemSettings, commission_rate: parseInt(e.target.value) || 15 })}
+                  />
+                  <p className="text-sm text-gray-500 -mt-2">Percentage of delivery fee keptby platform</p>
+
+                  <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <h4 className="font-medium text-blue-800 dark:text-blue-200 mb-2">How Commission Works</h4>
+                    <p className="text-sm text-blue-700 dark:text-blue-300">
+                      The platform takes {systemSettings.commission_rate}% of each delivery fee. Carriers receive {100 - systemSettings.commission_rate}%.
+                    </p>
+                    <p className="text-sm text-blue-700 dark:text-blue-300 mt-2">
+                      Example: On a 2,000 FCFA delivery, platform keeps {(2000 * systemSettings.commission_rate / 100).toFixed(0)} FCFA, carrier gets {(2000 * (100 - systemSettings.commission_rate) / 100).toFixed(0)} FCFA.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <div className="pt-4">
+                <Button onClick={handleSaveSystem} disabled={updateSettings.isPending}>
+                  <Save size={16} />
+                  {updateSettings.isPending ? 'Saving...' : 'Save System Settings'}
+                </Button>
+              </div>
+            </div>
           )}
 
           {activeTab === 'pricing' && (

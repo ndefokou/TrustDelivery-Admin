@@ -20,15 +20,15 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
   }
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+    <div className="fixed inset-0 z-[9999] overflow-y-auto">
       <div className="flex min-h-screen items-end sm:items-center justify-center p-0 sm:p-2 md:p-4">
-        <div className="fixed inset-0 bg-black bg-opacity-50 transition-opacity" onClick={onClose} />
+        <div className="fixed inset-0 bg-black bg-opacity-50 transition-opacity" onClick={onClose} style={{ zIndex: 9998 }} />
         
         <div className={clsx(
           'relative bg-white dark:bg-primary-800 rounded-t-lg sm:rounded-lg shadow-xl w-full sm:mx-2',
           'max-h-[95vh] sm:max-h-[90vh] overflow-y-auto',
           sizes[size]
-        )}>
+        )} style={{ zIndex: 9999 }}>
           {title && (
             <div className="flex items-center justify-between px-3 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-primary-700 sticky top-0 bg-white dark:bg-primary-800">
               <h3 className="text-sm sm:text-base md:text-lg font-semibold truncate pr-2">{title}</h3>

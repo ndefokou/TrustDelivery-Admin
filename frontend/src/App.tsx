@@ -3,12 +3,15 @@ import Layout from './components/layout/Layout'
 import Dashboard from './pages/Dashboard'
 import Deliveries from './pages/Deliveries'
 import DeliveryDetails from './pages/DeliveryDetails'
-import AwaitingAssignment from './pages/AwaitingAssignment'
-import Riders from './pages/Riders'
-import RiderDetails from './pages/RiderDetails'
-import RiderCollections from './pages/RiderCollections'
+import Carriers from './pages/Carriers'
+import CarrierDetails from './pages/CarrierDetails'
+import CarrierCollections from './pages/CarrierCollections'
 import Merchants from './pages/Merchants'
 import MerchantDetails from './pages/MerchantDetails'
+import AssignmentEngine from './pages/AssignmentEngine'
+import Zones from './pages/Zones'
+import Pricing from './pages/Pricing'
+import Disputes from './pages/Disputes'
 import Reports from './pages/Reports'
 import Payments from './pages/Payments'
 import Settings from './pages/Settings'
@@ -23,12 +26,15 @@ export default function App() {
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="deliveries" element={<Deliveries />} />
           <Route path="deliveries/:id" element={<DeliveryDetails />} />
-          <Route path="deliveries/awaiting" element={<AwaitingAssignment />} />
-          <Route path="riders" element={<Riders />} />
-          <Route path="riders/:id" element={<RiderDetails />} />
-          <Route path="riders/collections" element={<RiderCollections />} />
+          <Route path="carriers" element={<Carriers />} />
+          <Route path="carriers/:id" element={<CarrierDetails />} />
+          <Route path="carriers/collections" element={<CarrierCollections />} />
           <Route path="merchants" element={<Merchants />} />
           <Route path="merchants/:id" element={<MerchantDetails />} />
+          <Route path="assignment-engine" element={<AssignmentEngine />} />
+          <Route path="zones" element={<Zones />} />
+          <Route path="pricing" element={<Pricing />} />
+          <Route path="disputes" element={<Disputes />} />
           <Route path="reports" element={<Reports />} />
           <Route path="payments" element={<Payments />} />
           <Route path="settings" element={<Settings />} />

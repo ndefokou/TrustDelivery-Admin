@@ -1,6 +1,6 @@
 export type DeliveryStatus = 'awaiting_assignment' | 'assigned' | 'in_transit' | 'delivered' | 'failed'
 
-export type RiderStatus = 'active' | 'offline' | 'busy' | 'suspended'
+export type CarrierStatus = 'active' | 'suspended'
 
 export type MerchantStatus = 'active' | 'suspended' | 'pending'
 
@@ -21,7 +21,7 @@ export type NotificationType =
   | 'failed_delivery' 
   | 'expense_submission' 
   | 'new_merchant_registration' 
-  | 'new_rider_registration'
+  | 'new_carrier_registration'
   | 'delivery_assigned'
 
 export interface Delivery {
@@ -36,7 +36,7 @@ export interface Delivery {
   delivery_lat?: number
   delivery_lng?: number
   merchant_id: string
-  assigned_rider_id?: string
+  assigned_carrier_id?: string
   status: DeliveryStatus
   failure_reason?: string
   otp_code?: string
@@ -52,27 +52,26 @@ export interface Delivery {
   amount_collected?: number
   collection_status?: CollectionStatus
   collected_at?: string
-  rider_notes?: string
+  carrier_notes?: string
 }
 
-export interface Rider {
+export interface Carrier {
   id: string
-  full_name: string
-  phone_number: string
+  company_name: string
+  phone: string
   email?: string
-  national_id: string
-  address: string
-  motorbike_registration: string
-  profile_photo?: string
-  status: RiderStatus
-  current_lat?: number
-  current_lng?: number
-  total_deliveries: number
-  completed_deliveries: number
-  failed_deliveries: number
-  performance_score: number
-  total_revenue: number
+  address?: string
+  coverage_zones?: string[]
+  max_capacity?: number
+  base_fee?: number
+  price_per_km?: number
+  is_active: boolean
   is_verified: boolean
+  total_deliveries?: number
+  completed_deliveries?: number
+  failed_deliveries?: number
+  performance_score?: number
+  total_revenue?: number
   created_at: string
   updated_at: string
 }
@@ -88,6 +87,7 @@ export interface Merchant {
   total_deliveries: number
   total_revenue: number
   active_deliveries: number
+  is_verified?: boolean
   created_at: string
   updated_at: string
 }
@@ -114,8 +114,8 @@ export interface Payment {
 
 export interface Expense {
   id: string
-  rider_id: string
-  rider_name?: string
+  carrier_id: string
+  carrier_name?: string
   category: ExpenseCategory
   amount: number
   description: string
@@ -154,7 +154,7 @@ export interface DashboardStats {
   completed_today: number
   failed_today: number
   revenue_today: number
-  active_riders: number
+  active_carriers: number
 }
 
 export interface DailyDeliveries {
@@ -173,9 +173,9 @@ export interface StatusDistribution {
   percentage: number
 }
 
-export interface TopRider {
+export interface TopCarrier {
   rank: number
-  rider_name: string
+  carrier_name: string
   deliveries_completed: number
   success_rate: number
   revenue_generated: number
@@ -187,7 +187,7 @@ export interface DashboardData {
   deliveries_per_day: DailyDeliveries[]
   revenue_per_day: DailyRevenue[]
   status_distribution: StatusDistribution[]
-  top_performing_riders: TopRider[]
+  top_performing_carriers: TopCarrier[]
 }
 
 export interface PaginationParams {
@@ -222,9 +222,9 @@ export interface Settings {
   pricing_rules: PricingRule[]
 }
 
-export interface RiderCollection {
+export interface CarrierCollection {
   id: string
-  rider_id: string
+  carrier_id: string
   delivery_id: string
   amount_collected: number
   amount_returned: number
@@ -238,10 +238,10 @@ export interface RiderCollection {
   updated_at: string
 }
 
-export interface RiderCollectionWithDetails {
+export interface CarrierCollectionWithDetails {
   id: string
-  rider_id: string
-  rider_name: string
+  carrier_id: string
+  carrier_name: string
   delivery_id: string
   customer_name: string
   amount_collected: number
@@ -252,9 +252,9 @@ export interface RiderCollectionWithDetails {
   created_at: string
 }
 
-export interface RiderCollectionSummary {
-  rider_id: string
-  rider_name: string
+export interface CarrierCollectionSummary {
+  carrier_id: string
+  carrier_name: string
   total_collected: number
   total_returned: number
   outstanding_balance: number
@@ -263,7 +263,7 @@ export interface RiderCollectionSummary {
 
 export interface CollectionLedger {
   id: string
-  rider_id?: string
+  carrier_id?: string
   delivery_id?: string
   action: string
   amount: number
@@ -274,7 +274,7 @@ export interface CollectionLedger {
 }
 
 export interface ValidateReturnRequest {
-  rider_id: string
+  carrier_id: string
   amount: number
   notes?: string
 }

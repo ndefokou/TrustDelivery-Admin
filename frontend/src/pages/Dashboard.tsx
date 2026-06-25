@@ -150,7 +150,7 @@ export default function Dashboard() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Top Performing Riders</CardTitle>
+            <CardTitle>Top Performing Carriers</CardTitle>
           </CardHeader>
           <CardContent>
 <div className="overflow-x-auto -mx-4 sm:mx-0">
@@ -159,32 +159,32 @@ export default function Dashboard() {
                     <thead>
                       <tr>
                         <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Rank</th>
-                        <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Rider</th>
+                        <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Carrier</th>
                         <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Deliveries</th>
                         <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Success</th>
                         <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Revenue</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 dark:divide-primary-700">
-                      {dashboard?.top_performing_riders?.map((rider) => (
-                        <tr key={rider.rank} className="hover:bg-gray-50 dark:hover:bg-primary-700">
+                      {dashboard?.top_performing_carriers?.map((carrier) => (
+                        <tr key={carrier.rank} className="hover:bg-gray-50 dark:hover:bg-primary-700">
                           <td className="px-2 sm:px-4 py-3">
                             <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${
-                              rider.rank === 1 ? 'bg-warning text-white' :
-                              rider.rank === 2 ? 'bg-gray-300 text-gray-800' :
-                              rider.rank === 3 ? 'bg-orange-400 text-white' :
+                              carrier.rank === 1 ? 'bg-warning text-white' :
+                              carrier.rank === 2 ? 'bg-gray-300 text-gray-800' :
+                              carrier.rank === 3 ? 'bg-orange-400 text-white' :
                               'bg-gray-100 dark:bg-primary-600 text-gray-800 dark:text-white'
                             }`}>
-                              {rider.rank}
+                              {carrier.rank}
                             </span>
                           </td>
-                          <td className="px-2 sm:px-4 py-3 text-sm font-medium">{rider.rider_name}</td>
-                          <td className="px-2 sm:px-4 py-3 text-sm">{rider.deliveries_completed}</td>
+                          <td className="px-2 sm:px-4 py-3 text-sm font-medium">{carrier.carrier_name}</td>
+                          <td className="px-2 sm:px-4 py-3 text-sm">{carrier.deliveries_completed}</td>
                           <td className="px-2 sm:px-4 py-3">
-                            <StatusBadge status={rider.success_rate >= 90 ? 'delivered' : rider.success_rate >= 70 ? 'in_transit' : 'failed'} />
-                            <span className="ml-2 text-sm">{rider.success_rate.toFixed(1)}%</span>
+                            <StatusBadge status={carrier.success_rate >= 90 ? 'delivered' : carrier.success_rate >= 70 ? 'in_transit' : 'failed'} />
+                            <span className="ml-2 text-sm">{carrier.success_rate.toFixed(1)}%</span>
                           </td>
-                          <td className="px-2 sm:px-4 py-3 text-sm font-medium">{rider.revenue_generated.toLocaleString()} FCFA</td>
+                          <td className="px-2 sm:px-4 py-3 text-sm font-medium">{carrier.revenue_generated.toLocaleString()} FCFA</td>
                         </tr>
                       ))}
                     </tbody>

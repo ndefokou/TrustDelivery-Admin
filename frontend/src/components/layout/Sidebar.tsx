@@ -3,14 +3,17 @@ import { useUIStore } from '../../stores'
 import {
   LayoutDashboard,
   Package,
-  Bike,
+  Truck,
   Store,
-  FileText,
-  CreditCard,
   Settings,
   ChevronDown,
   X,
-  Banknote
+  BrainCog,
+  Map,
+  DollarSign,
+  Scale,
+  BarChart3,
+  Bell
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 
@@ -29,7 +32,6 @@ const navItems: NavItem[] = [
     icon: <Package size={20} />,
     children: [
       { name: 'All Deliveries', path: '/deliveries' },
-      { name: 'Awaiting Assignment', path: '/deliveries/awaiting' },
       { name: 'Assigned', path: '/deliveries?status=assigned' },
       { name: 'In Transit', path: '/deliveries?status=in_transit' },
       { name: 'Delivered', path: '/deliveries?status=delivered' },
@@ -37,14 +39,13 @@ const navItems: NavItem[] = [
     ],
   },
   {
-    name: 'Riders',
-    path: '/riders',
-    icon: <Bike size={20} />,
+    name: 'Carriers',
+    path: '/carriers',
+    icon: <Truck size={20} />,
     children: [
-      { name: 'Rider List', path: '/riders' },
-      { name: 'Rider Performance', path: '/riders?tab=performance' },
-      { name: 'Rider Expenses', path: '/riders?tab=expenses' },
-      { name: 'Rider Collections', path: '/riders/collections' },
+      { name: 'Carrier List', path: '/carriers' },
+      { name: 'Carrier Performance', path: '/carriers?tab=performance' },
+      { name: 'Carrier Collections', path: '/carriers/collections' },
     ],
   },
   {
@@ -56,19 +57,12 @@ const navItems: NavItem[] = [
       { name: 'Merchant Activity', path: '/merchants?tab=activity' },
     ],
   },
-  {
-    name: 'Reports',
-    path: '/reports',
-    icon: <FileText size={20} />,
-    children: [
-      { name: 'Daily Reports', path: '/reports?tab=daily' },
-      { name: 'Weekly Reports', path: '/reports?tab=weekly' },
-      { name: 'Monthly Reports', path: '/reports?tab=monthly' },
-      { name: 'Revenue Reports', path: '/reports?tab=revenue' },
-      { name: 'Failed Deliveries', path: '/reports?tab=failed' },
-    ],
-  },
-  { name: 'Payments', path: '/payments', icon: <CreditCard size={20} /> },
+  { name: 'Assignment Engine', path: '/assignment-engine', icon: <BrainCog size={20} /> },
+  { name: 'Zones', path: '/zones', icon: <Map size={20} /> },
+  { name: 'Pricing', path: '/pricing', icon: <DollarSign size={20} /> },
+  { name: 'Disputes', path: '/disputes', icon: <Scale size={20} /> },
+  { name: 'Reports', path: '/reports', icon: <BarChart3 size={20} /> },
+  { name: 'Notifications', path: '/notifications', icon: <Bell size={20} /> },
   { name: 'Settings', path: '/settings', icon: <Settings size={20} /> },
 ]
 

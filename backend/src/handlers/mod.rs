@@ -1,6 +1,6 @@
 pub mod auth;
 pub mod deliveries;
-pub mod riders;
+pub mod carriers;
 pub mod merchants;
 pub mod reports;
 pub mod payments;

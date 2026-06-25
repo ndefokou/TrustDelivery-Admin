@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { useRiders, useCreateRider, useUpdateRider, useSuspendRider, useActivateRider, useRiderPerformance, useRiderExpenses, useReviewExpense } from '../hooks/useApi'
+import { useCarriers, useCreateCarrier, useUpdateCarrier, useSuspendCarrier, useActivateCarrier, useCarrierPerformance, useCarrierExpenses, useReviewExpense } from '../hooks/useApi'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { FloatingActionButton } from '../components/ui/FloatingActionButton'
@@ -12,23 +12,21 @@ import { Plus, Search, Eye, Edit, Ban, CheckCircle, ListChecks, TrendingUp, Rece
 import { AxiosError } from 'axios'
 import { format } from 'date-fns'
 
-interface CreateRiderFormData {
-  full_name: string
-  phone_number: string
+interface CreateCarrierFormData {
+  company_name: string
+  phone: string
   email: string
   password: string
-  national_id: string
   address: string
-  motorbike_registration: string
 }
 
 const tabs = [
-  { id: 'list', label: 'Rider List', icon: ListChecks },
-  { id: 'performance', label: 'Rider Performance', icon: TrendingUp },
-  { id: 'expenses', label: 'Rider Expenses', icon: Receipt },
+  { id: 'list', label: 'Carrier List', icon: ListChecks },
+  { id: 'performance', label: 'Carrier Performance', icon: TrendingUp },
+  { id: 'expenses', label: 'Carrier Expenses', icon: Receipt },
 ]
 
-export default function Riders() {
+export default function Carriers() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const activeTab = searchParams.get('tab') || 'list'
@@ -42,18 +40,16 @@ export default function Riders() {
   const [showPasswordModal, setShowPasswordModal] = useState(false)
   const [showReviewModal, setShowReviewModal] = useState(false)
   const [generatedPassword, setGeneratedPassword] = useState<string | null>(null)
-  const [createdRiderEmail, setCreatedRiderEmail] = useState<string | null>(null)
+  const [createdCarrierEmail, setCreatedCarrierEmail] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [newRider, setNewRider] = useState<CreateRiderFormData>({
-    full_name: '',
-    phone_number: '',
+  const [newCarrier, setNewCarrier] = useState<CreateCarrierFormData>({
+    company_name: '',
+    phone: '',
     email: '',
     password: '',
-    national_id: '',
     address: '',
-    motorbike_registration: '',
   })
-  const [editingRider, setEditingRider] = useState<any>(null)
+  const [editingCarrier, setEditingCarrier] = useState<any>(null)
   const [reviewingExpense, setReviewingExpense] = useState<any>(null)
   const [reviewForm, setReviewForm] = useState({ status: 'approved', admin_notes: '' })
 
@@ -66,60 +62,58 @@ export default function Riders() {
     return password
   }
 
-  const { data: ridersData, isLoading: ridersLoading } = useRiders(filters)
-  const { data: performance, isLoading: perfLoading } = useRiderPerformance()
-  const { data: expenses, isLoading: expensesLoading } = useRiderExpenses()
+  const { data: carriersData, isLoading: carriersLoading } = useCarriers(filters)
+  const { data: performance, isLoading: perfLoading } = useCarrierPerformance()
+  const { data: expenses, isLoading: expensesLoading } = useCarrierExpenses()
 
-  const createRider = useCreateRider()
-  const updateRider = useUpdateRider()
-  const suspendRider = useSuspendRider()
-  const activateRider = useActivateRider()
+  const createCarrier = useCreateCarrier()
+  const updateCarrier = useUpdateCarrier()
+  const suspendCarrier = useSuspendCarrier()
+  const activateCarrier = useActivateCarrier()
   const reviewExpense = useReviewExpense()
 
-  const handleCreateRider = async (e: React.FormEvent) => {
+  const handleCreateCarrier = async (e: React.FormEvent) => {
     e.preventDefault()
-    const password = newRider.password || generatePassword()
+    const password = newCarrier.password || generatePassword()
     try {
-      await createRider.mutateAsync({
-        full_name: newRider.full_name,
-        phone_number: newRider.phone_number,
-        email: newRider.email,
+      await createCarrier.mutateAsync({
+        company_name: newCarrier.company_name,
+        phone: newCarrier.phone,
+        email: newCarrier.email,
         password: password,
-        national_id: newRider.national_id,
-        address: newRider.address,
-        motorbike_registration: newRider.motorbike_registration,
-      })
-      setCreatedRiderEmail(newRider.email)
+        address: newCarrier.address || undefined,
+      } as any)
+      setCreatedCarrierEmail(newCarrier.email)
       setGeneratedPassword(password)
       setShowAddModal(false)
       setShowPasswordModal(true)
-      setNewRider({ full_name: '', phone_number: '', email: '', password: '', national_id: '', address: '', motorbike_registration: '' })
+      setNewCarrier({ company_name: '', phone: '', email: '', password: '', address: '' })
       setError(null)
     } catch (err) {
       const axiosError = err as AxiosError<{ error: string }>
-      const message = axiosError.response?.data?.error || 'Failed to create rider'
+      const message = axiosError.response?.data?.error || 'Failed to create carrier'
       setError(message)
     }
   }
 
-  const handleUpdateRider = async (e: React.FormEvent) => {
+  const handleUpdateCarrier = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!editingRider) return
+    if (!editingCarrier) return
     try {
-      await updateRider.mutateAsync({
-        id: editingRider.id,
-        rider: {
-          full_name: editingRider.full_name,
-          phone_number: editingRider.phone_number,
-          address: editingRider.address,
+      await updateCarrier.mutateAsync({
+        id: editingCarrier.id,
+        carrier: {
+          company_name: editingCarrier.company_name,
+          phone: editingCarrier.phone,
+          address: editingCarrier.address,
         },
       })
       setShowEditModal(false)
-      setEditingRider(null)
+      setEditingCarrier(null)
       setError(null)
     } catch (err) {
       const axiosError = err as AxiosError<{ error: string }>
-      const message = axiosError.response?.data?.error || 'Failed to update rider'
+      const message = axiosError.response?.data?.error || 'Failed to update carrier'
       setError(message)
     }
   }
@@ -144,17 +138,17 @@ export default function Riders() {
     }
   }
 
-  const riders = ridersData?.riders || []
+  const carriers = carriersData?.carriers || []
 
   const filteredPerformance = (performance || []).filter((r: any) =>
-    r.rider_name.toLowerCase().includes(perfSearch.toLowerCase())
+    r.carrier_name.toLowerCase().includes(perfSearch.toLowerCase())
   )
 
   const filteredExpenses = (expenses || []).filter((e: any) => {
     const matchesCategory = expenseFilters.category ? e.category === expenseFilters.category : true
     const matchesStatus = expenseFilters.status ? e.status === expenseFilters.status : true
     const matchesSearch = expenseFilters.search
-      ? (e.rider_name?.toLowerCase().includes(expenseFilters.search.toLowerCase()) ||
+      ? (e.carrier_name?.toLowerCase().includes(expenseFilters.search.toLowerCase()) ||
           e.description.toLowerCase().includes(expenseFilters.search.toLowerCase()))
       : true
     return matchesCategory && matchesStatus && matchesSearch
@@ -163,11 +157,11 @@ export default function Riders() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Riders</h1>
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Carriers</h1>
         {activeTab === 'list' && (
           <Button onClick={() => setShowAddModal(true)} className="hidden sm:inline-flex">
             <Plus size={16} />
-            Add Rider
+            Add Carrier
           </Button>
         )}
       </div>
@@ -185,7 +179,7 @@ export default function Riders() {
             variant={activeTab === tab.id ? 'primary' : 'secondary'}
             onClick={() => {
               if (tab.id === 'list') {
-                navigate('/riders')
+                navigate('/carriers')
               } else {
                 setSearchParams({ tab: tab.id })
               }
@@ -201,7 +195,7 @@ export default function Riders() {
       {activeTab === 'list' && (
         <Card>
           <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <CardTitle>Rider List</CardTitle>
+            <CardTitle>Carrier List</CardTitle>
             <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
               <Select
                 value={filters.status}
@@ -210,15 +204,13 @@ export default function Riders() {
               >
                 <option value="">All Status</option>
                 <option value="active">Active</option>
-                <option value="offline">Offline</option>
-                <option value="busy">Busy</option>
                 <option value="suspended">Suspended</option>
               </Select>
               <div className="relative flex-1 sm:flex-initial">
                 <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <Input
                   type="text"
-                  placeholder="Search riders..."
+                  placeholder="Search carriers..."
                   value={filters.search}
                   onChange={(e) => setFilters({ ...filters, search: e.target.value })}
                   className="pl-9 w-full sm:w-64"
@@ -230,7 +222,7 @@ export default function Riders() {
             <Table>
               <Thead>
                 <Tr>
-                  <Th>Rider</Th>
+                  <Th>Carrier</Th>
                   <Th className="hidden sm:table-cell">Phone</Th>
                   <Th>Status</Th>
                   <Th className="hidden md:table-cell">Completed</Th>
@@ -241,7 +233,7 @@ export default function Riders() {
                 </Tr>
               </Thead>
               <Tbody>
-                {ridersLoading ? (
+                {carriersLoading ? (
                   <Tr>
                     <Td colSpan={8} className="text-center py-8">
                       <div className="flex items-center justify-center">
@@ -249,54 +241,54 @@ export default function Riders() {
                       </div>
                     </Td>
                   </Tr>
-                ) : riders.length === 0 ? (
+                ) : carriers.length === 0 ? (
                   <Tr>
                     <Td colSpan={8} className="text-center py-8 text-gray-500">
-                      No riders found
+                      No carriers found
                     </Td>
                   </Tr>
                 ) : (
-                  riders.map((rider: any) => (
-                    <Tr key={rider.id} className="cursor-pointer" onClick={() => navigate(`/riders/${rider.id}`)}>
+                  carriers.map((carrier: any) => (
+                    <Tr key={carrier.id} className="cursor-pointer" onClick={() => navigate(`/carriers/${carrier.id}`)}>
                       <Td>
                         <div className="flex items-center gap-2 sm:gap-3">
                           <div className="w-8 h-8 sm:w-10 sm:h-10 bg-secondary rounded-full flex items-center justify-center text-white font-bold text-sm sm:text-base">
-                            {rider.full_name.charAt(0)}
+                            {carrier.company_name.charAt(0)}
                           </div>
                           <div className="min-w-0">
-                            <p className="font-medium truncate">{rider.full_name}</p>
-                            <p className="text-xs text-gray-500 hidden sm:block">{rider.motorbike_registration}</p>
-                            <p className="text-xs text-gray-500 sm:hidden">{rider.phone_number}</p>
+                            <p className="font-medium truncate">{carrier.company_name}</p>
+                            <p className="text-xs text-gray-500 hidden sm:block">{carrier.email || ''}</p>
+                            <p className="text-xs text-gray-500 sm:hidden">{carrier.phone}</p>
                           </div>
                         </div>
                       </Td>
-                      <Td className="hidden sm:table-cell">{rider.phone_number}</Td>
-                      <Td><StatusBadge status={rider.status} /></Td>
-                      <Td className="hidden md:table-cell">{rider.completed_deliveries}</Td>
-                      <Td className="hidden md:table-cell text-danger">{rider.failed_deliveries}</Td>
+<Td className="hidden sm:table-cell">{carrier.phone}</Td>
+                       <Td><StatusBadge status={carrier.is_active ? 'active' : 'suspended'} /></Td>
+                      <Td className="hidden md:table-cell">{carrier.completed_deliveries}</Td>
+                      <Td className="hidden md:table-cell text-danger">{carrier.failed_deliveries}</Td>
                       <Td className="hidden sm:table-cell">
                         <span className={`font-medium ${
-                          rider.performance_score >= 90 ? 'text-success' :
-                          rider.performance_score >= 70 ? 'text-warning' : 'text-danger'
+                          carrier.performance_score >= 90 ? 'text-success' :
+                          carrier.performance_score >= 70 ? 'text-warning' : 'text-danger'
                         }`}>
-                          {rider.performance_score.toFixed(1)}%
+                          {(carrier.performance_score || 0).toFixed(1)}%
                         </span>
                       </Td>
-                      <Td className="hidden md:table-cell font-medium">{rider.total_revenue.toLocaleString()} FCFA</Td>
+                      <Td className="hidden md:table-cell font-medium">{(carrier.total_revenue || 0).toLocaleString()} FCFA</Td>
                       <Td>
                         <div className="flex items-center gap-1">
-                          <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); navigate(`/riders/${rider.id}`) }}>
+                          <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); navigate(`/carriers/${carrier.id}`) }}>
                             <Eye size={14} />
                           </Button>
-                          <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); setEditingRider(rider); setShowEditModal(true) }} className="hidden sm:flex">
+                          <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); setEditingCarrier(carrier); setShowEditModal(true) }} className="hidden sm:flex">
                             <Edit size={14} />
                           </Button>
-                          {rider.status === 'suspended' ? (
-                            <Button size="sm" variant="success" onClick={(e) => { e.stopPropagation(); activateRider.mutate(rider.id) }} disabled={activateRider.isPending && activateRider.variables === rider.id}>
+                          {!carrier.is_active ? (
+                            <Button size="sm" variant="success" onClick={(e) => { e.stopPropagation(); activateCarrier.mutate(carrier.id) }} disabled={activateCarrier.isPending && activateCarrier.variables === carrier.id}>
                               <CheckCircle size={14} />
                             </Button>
                           ) : (
-                            <Button size="sm" variant="ghost" className="text-danger" onClick={(e) => { e.stopPropagation(); suspendRider.mutate(rider.id) }} disabled={suspendRider.isPending && suspendRider.variables === rider.id}>
+                            <Button size="sm" variant="ghost" className="text-danger" onClick={(e) => { e.stopPropagation(); suspendCarrier.mutate(carrier.id) }} disabled={suspendCarrier.isPending && suspendCarrier.variables === carrier.id}>
                               <Ban size={14} />
                             </Button>
                           )}
@@ -314,12 +306,12 @@ export default function Riders() {
       {activeTab === 'performance' && (
         <Card>
           <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <CardTitle>Rider Performance</CardTitle>
+            <CardTitle>Carrier Performance</CardTitle>
             <div className="relative w-full sm:w-64">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <Input
                 type="text"
-                placeholder="Search riders..."
+                placeholder="Search carriers..."
                 value={perfSearch}
                 onChange={(e) => setPerfSearch(e.target.value)}
                 className="pl-9 w-full"
@@ -331,7 +323,7 @@ export default function Riders() {
               <Thead>
                 <Tr>
                   <Th className="w-16">Rank</Th>
-                  <Th>Rider</Th>
+                  <Th>Carrier</Th>
                   <Th className="hidden md:table-cell">Completed</Th>
                   <Th>Success Rate</Th>
                   <Th className="hidden sm:table-cell">Revenue</Th>
@@ -353,38 +345,38 @@ export default function Riders() {
                     </Td>
                   </Tr>
                 ) : (
-                  filteredPerformance.map((rider: any) => (
-                    <Tr key={rider.rank}>
+                  filteredPerformance.map((carrier: any) => (
+                    <Tr key={carrier.rank}>
                       <Td>
                         <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm ${
-                          rider.rank === 1 ? 'bg-warning-100 text-warning-800 dark:bg-warning-900 dark:text-warning-300' :
-                          rider.rank === 2 ? 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300' :
-                          rider.rank === 3 ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300' :
+                          carrier.rank === 1 ? 'bg-warning-100 text-warning-800 dark:bg-warning-900 dark:text-warning-300' :
+                          carrier.rank === 2 ? 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300' :
+                          carrier.rank === 3 ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300' :
                           'bg-gray-50 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
                         }`}>
-                          {rider.rank}
+                          {carrier.rank}
                         </span>
                       </Td>
                       <Td>
                         <div className="flex items-center gap-2 sm:gap-3">
                           <div className="w-8 h-8 sm:w-10 sm:h-10 bg-secondary rounded-full flex items-center justify-center text-white font-bold text-sm sm:text-base">
-                            {rider.rider_name.charAt(0)}
+                            {carrier.carrier_name.charAt(0)}
                           </div>
                           <div className="min-w-0">
-                            <p className="font-medium truncate">{rider.rider_name}</p>
+                            <p className="font-medium truncate">{carrier.carrier_name}</p>
                           </div>
                         </div>
                       </Td>
-                      <Td className="hidden md:table-cell">{rider.deliveries_completed}</Td>
+                      <Td className="hidden md:table-cell">{carrier.deliveries_completed}</Td>
                       <Td>
                         <span className={`font-medium ${
-                          rider.success_rate >= 90 ? 'text-success' :
-                          rider.success_rate >= 70 ? 'text-warning' : 'text-danger'
+                          carrier.success_rate >= 90 ? 'text-success' :
+                          carrier.success_rate >= 70 ? 'text-warning' : 'text-danger'
                         }`}>
-                          {rider.success_rate.toFixed(1)}%
+                          {carrier.success_rate.toFixed(1)}%
                         </span>
                       </Td>
-                      <Td className="hidden sm:table-cell font-medium">{rider.revenue_generated.toLocaleString()} FCFA</Td>
+                      <Td className="hidden sm:table-cell font-medium">{carrier.revenue_generated.toLocaleString()} FCFA</Td>
                     </Tr>
                   ))
                 )}
@@ -397,7 +389,7 @@ export default function Riders() {
       {activeTab === 'expenses' && (
         <Card>
           <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <CardTitle>Rider Expenses</CardTitle>
+            <CardTitle>Carrier Expenses</CardTitle>
             <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
               <Select
                 value={expenseFilters.category}
@@ -436,7 +428,7 @@ export default function Riders() {
             <Table>
               <Thead>
                 <Tr>
-                  <Th>Rider</Th>
+                  <Th>Carrier</Th>
                   <Th>Category</Th>
                   <Th>Amount</Th>
                   <Th className="hidden md:table-cell">Description</Th>
@@ -466,9 +458,9 @@ export default function Riders() {
                       <Td>
                         <div className="flex items-center gap-2">
                           <div className="w-8 h-8 bg-secondary rounded-full flex items-center justify-center text-white font-bold text-sm">
-                            {(expense.rider_name || '?').charAt(0)}
+                            {(expense.carrier_name || '?').charAt(0)}
                           </div>
-                          <span className="font-medium truncate">{expense.rider_name || 'Unknown'}</span>
+                          <span className="font-medium truncate">{expense.carrier_name || 'Unknown'}</span>
                         </div>
                       </Td>
                       <Td className="capitalize">{expense.category}</Td>
@@ -508,8 +500,8 @@ export default function Riders() {
             )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <p className="text-sm text-gray-500 mb-1">Rider</p>
-                <p className="font-medium">{reviewingExpense.rider_name || 'Unknown'}</p>
+                <p className="text-sm text-gray-500 mb-1">Carrier</p>
+                <p className="font-medium">{reviewingExpense.carrier_name || 'Unknown'}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-500 mb-1">Amount</p>
@@ -543,8 +535,8 @@ export default function Riders() {
         )}
       </Modal>
 
-      <Modal isOpen={showAddModal} onClose={() => { setShowAddModal(false); setError(null) }} title="Add New Rider" size="lg">
-        <form onSubmit={handleCreateRider} className="space-y-4">
+      <Modal isOpen={showAddModal} onClose={() => { setShowAddModal(false); setError(null) }} title="Add New Carrier" size="lg">
+        <form onSubmit={handleCreateCarrier} className="space-y-4">
           {error && (
             <div className="p-3 bg-red-100 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-md text-red-700 dark:text-red-400 text-sm">
               {error}
@@ -552,16 +544,16 @@ export default function Riders() {
           )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
-              label="Full Name"
-              value={newRider.full_name}
-              onChange={(e) => setNewRider({ ...newRider, full_name: e.target.value })}
+              label="Company Name"
+              value={newCarrier.company_name}
+              onChange={(e) => setNewCarrier({ ...newCarrier, company_name: e.target.value })}
               required
             />
             <Input
               label="Phone Number"
               type="tel"
-              value={newRider.phone_number}
-              onChange={(e) => setNewRider({ ...newRider, phone_number: e.target.value })}
+              value={newCarrier.phone}
+              onChange={(e) => setNewCarrier({ ...newCarrier, phone: e.target.value })}
               required
             />
           </div>
@@ -569,67 +561,52 @@ export default function Riders() {
             <Input
               label="Email"
               type="email"
-              value={newRider.email}
-              onChange={(e) => setNewRider({ ...newRider, email: e.target.value })}
-              placeholder="rider@example.com"
+              value={newCarrier.email}
+              onChange={(e) => setNewCarrier({ ...newCarrier, email: e.target.value })}
+              placeholder="carrier@example.com"
               required
             />
             <div className="relative">
               <Input
                 label="Password (leave empty to auto-generate)"
                 type="text"
-                value={newRider.password}
-                onChange={(e) => setNewRider({ ...newRider, password: e.target.value })}
+                value={newCarrier.password}
+                onChange={(e) => setNewCarrier({ ...newCarrier, password: e.target.value })}
                 placeholder="Auto-generated if empty"
               />
               <button
                 type="button"
-                onClick={() => setNewRider({ ...newRider, password: generatePassword() })}
+                onClick={() => setNewCarrier({ ...newCarrier, password: generatePassword() })}
                 className="absolute right-2 top-7 text-xs text-secondary hover:text-primary"
               >
                 Generate
               </button>
             </div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input
-              label="National ID"
-              value={newRider.national_id}
-              onChange={(e) => setNewRider({ ...newRider, national_id: e.target.value })}
-              required
-            />
-            <Input
-              label="Motorbike Registration"
-              value={newRider.motorbike_registration}
-              onChange={(e) => setNewRider({ ...newRider, motorbike_registration: e.target.value })}
-              required
-            />
-          </div>
           <Input
             label="Address"
-            value={newRider.address}
-            onChange={(e) => setNewRider({ ...newRider, address: e.target.value })}
-            required
+            value={newCarrier.address}
+            onChange={(e) => setNewCarrier({ ...newCarrier, address: e.target.value })}
           />
           <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end">
             <Button type="button" variant="secondary" onClick={() => setShowAddModal(false)} className="w-full sm:w-auto">Cancel</Button>
-            <Button type="submit" disabled={createRider.isPending} className="w-full sm:w-auto">
-              {createRider.isPending ? 'Creating...' : 'Create Rider'}
+            <Button type="submit" disabled={createCarrier.isPending} className="w-full sm:w-auto">
+              {createCarrier.isPending ? 'Creating...' : 'Create Carrier'}
             </Button>
           </div>
         </form>
       </Modal>
 
-      <Modal isOpen={showPasswordModal} onClose={() => { setShowPasswordModal(false); setGeneratedPassword(null); setCreatedRiderEmail(null) }} title="Rider Created Successfully" size="md">
+      <Modal isOpen={showPasswordModal} onClose={() => { setShowPasswordModal(false); setGeneratedPassword(null); setCreatedCarrierEmail(null) }} title="Carrier Created Successfully" size="md">
         <div className="space-y-4">
           <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
             <p className="text-sm text-green-800 dark:text-green-200 mb-2">
-              Rider has been created successfully. Share these credentials with the rider:
+              Carrier has been created successfully. Share these credentials with the carrier:
             </p>
             <div className="space-y-2">
               <div className="flex justify-between items-center">
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Email:</span>
-                <span className="text-sm font-mono bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">{createdRiderEmail}</span>
+                <span className="text-sm font-mono bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">{createdCarrierEmail}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Password:</span>
@@ -638,19 +615,19 @@ export default function Riders() {
             </div>
           </div>
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            Please save these credentials securely. The rider will need them to log into the Rider App.
+            Please save these credentials securely. The carrier will need them to log into the Carrier App.
           </p>
           <div className="flex justify-end">
-            <Button onClick={() => { setShowPasswordModal(false); setGeneratedPassword(null); setCreatedRiderEmail(null) }}>
+            <Button onClick={() => { setShowPasswordModal(false); setGeneratedPassword(null); setCreatedCarrierEmail(null) }}>
               Done
             </Button>
           </div>
         </div>
       </Modal>
 
-      <Modal isOpen={showEditModal} onClose={() => { setShowEditModal(false); setEditingRider(null); setError(null) }} title="Edit Rider" size="lg">
-        {editingRider && (
-          <form onSubmit={handleUpdateRider} className="space-y-4">
+      <Modal isOpen={showEditModal} onClose={() => { setShowEditModal(false); setEditingCarrier(null); setError(null) }} title="Edit Carrier" size="lg">
+        {editingCarrier && (
+          <form onSubmit={handleUpdateCarrier} className="space-y-4">
             {error && (
               <div className="p-3 bg-red-100 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-md text-red-700 dark:text-red-400 text-sm">
                 {error}
@@ -658,29 +635,34 @@ export default function Riders() {
             )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input
-                label="Full Name"
-                value={editingRider.full_name}
-                onChange={(e) => setEditingRider({ ...editingRider, full_name: e.target.value })}
+                label="Company Name"
+                value={editingCarrier.company_name}
+                onChange={(e) => setEditingCarrier({ ...editingCarrier, company_name: e.target.value })}
                 required
               />
               <Input
                 label="Phone Number"
                 type="tel"
-                value={editingRider.phone_number}
-                onChange={(e) => setEditingRider({ ...editingRider, phone_number: e.target.value })}
+                value={editingCarrier.phone}
+                onChange={(e) => setEditingCarrier({ ...editingCarrier, phone: e.target.value })}
                 required
               />
             </div>
             <Input
+              label="Email"
+              type="email"
+              value={editingCarrier.email}
+              onChange={(e) => setEditingCarrier({ ...editingCarrier, email: e.target.value })}
+            />
+            <Input
               label="Address"
-              value={editingRider.address}
-              onChange={(e) => setEditingRider({ ...editingRider, address: e.target.value })}
-              required
+              value={editingCarrier.address || ''}
+              onChange={(e) => setEditingCarrier({ ...editingCarrier, address: e.target.value })}
             />
             <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end">
               <Button type="button" variant="secondary" onClick={() => setShowEditModal(false)} className="w-full sm:w-auto">Cancel</Button>
-              <Button type="submit" disabled={updateRider.isPending} className="w-full sm:w-auto">
-                {updateRider.isPending ? 'Saving...' : 'Save Changes'}
+              <Button type="submit" disabled={updateCarrier.isPending} className="w-full sm:w-auto">
+                {updateCarrier.isPending ? 'Saving...' : 'Save Changes'}
               </Button>
             </div>
           </form>

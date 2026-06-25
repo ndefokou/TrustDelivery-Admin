@@ -1,6 +1,6 @@
 use actix_web::{web, HttpResponse, Error};
 use crate::config::AppState;
-use crate::models::{CreateDeliveryRequest, UpdateDeliveryRequest, AssignRiderRequest, DeliveryListResponse, DeliveryFilter, DeliveryDetailsResponse, MerchantBasic, RiderBasic};
+use crate::models::{CreateDeliveryRequest, UpdateDeliveryRequest, AssignCarrierRequest, DeliveryListResponse, DeliveryFilter, DeliveryDetailsResponse, CarrierBasic, MerchantWithLocation};
 use crate::services::pricing_service::PricingService;
 use uuid::Uuid;
 use chrono::Utc;
@@ -10,9 +10,9 @@ fn generate_otp() -> String {
     format!("{:04}", rand::thread_rng().gen_range(1000..9999))
 }
 
-const DELIVERY_SELECT: &str = "d.id, d.product_description, d.product_value::float8, d.delivery_cost::float8, d.distance_km::float8, d.customer_name, d.customer_phone, COALESCE(d.delivery_address_text, d.delivery_address) AS delivery_address, d.delivery_latitude::float8 AS delivery_lat, d.delivery_longitude::float8 AS delivery_lng, d.merchant_id, COALESCE(d.assigned_rider_id, d.rider_id) AS assigned_rider_id, LOWER(d.status::text)::delivery_status AS status, d.failure_reason, d.otp_code, d.otp_verified, d.created_at, d.paid_at, d.assigned_at, d.picked_up_at, d.delivered_at, d.failed_at";
+const DELIVERY_SELECT: &str = "d.id, d.product_description, d.product_value::float8, d.delivery_cost::float8, d.distance_km::float8, d.customer_name, d.customer_phone, COALESCE(d.delivery_address_text, d.delivery_address) AS delivery_address, d.delivery_latitude::float8 AS delivery_lat, d.delivery_longitude::float8 AS delivery_lng, d.merchant_id, COALESCE(d.assigned_carrier_id, d.carrier_id) AS assigned_carrier_id, LOWER(d.status::text)::delivery_status AS status, d.failure_reason, d.otp_code, d.otp_verified, d.created_at, d.paid_at, d.assigned_at, d.picked_up_at, d.delivered_at, d.failed_at";
 
-const DELIVERY_RETURNING: &str = "id, product_description, product_value::float8, delivery_cost::float8, distance_km::float8, customer_name, customer_phone, COALESCE(delivery_address_text, delivery_address) AS delivery_address, delivery_latitude::float8 AS delivery_lat, delivery_longitude::float8 AS delivery_lng, merchant_id, COALESCE(assigned_rider_id, rider_id) AS assigned_rider_id, LOWER(status::text)::delivery_status AS status, failure_reason, otp_code, otp_verified, created_at, paid_at, assigned_at, picked_up_at, delivered_at, failed_at";
+const DELIVERY_RETURNING: &str = "id, product_description, product_value::float8, delivery_cost::float8, distance_km::float8, customer_name, customer_phone, COALESCE(delivery_address_text, delivery_address) AS delivery_address, delivery_latitude::float8 AS delivery_lat, delivery_longitude::float8 AS delivery_lng, merchant_id, COALESCE(assigned_carrier_id, carrier_id) AS assigned_carrier_id, LOWER(status::text)::delivery_status AS status, failure_reason, otp_code, otp_verified, created_at, paid_at, assigned_at, picked_up_at, delivered_at, failed_at";
 
 pub async fn list_deliveries(
     state: web::Data<AppState>,
@@ -40,8 +40,8 @@ pub async fn list_deliveries(
         conditions.push(format!("d.merchant_id = ${}", idx));
         idx += 1;
     }
-    if query.rider_id.is_some() {
-        conditions.push(format!("d.assigned_rider_id = ${}", idx));
+    if query.carrier_id.is_some() {
+        conditions.push(format!("d.assigned_carrier_id = ${}", idx));
         idx += 1;
     }
     if query.date_from.as_ref().map(|s| !s.is_empty()).unwrap_or(false) {
@@ -79,8 +79,8 @@ pub async fn list_deliveries(
     if let Some(merchant_id) = query.merchant_id {
         q = q.bind(merchant_id);
     }
-    if let Some(rider_id) = query.rider_id {
-        q = q.bind(rider_id);
+    if let Some(carrier_id) = query.carrier_id {
+        q = q.bind(carrier_id);
     }
     if let Some(date_from) = &query.date_from {
         if !date_from.is_empty() {
@@ -130,8 +130,8 @@ pub async fn list_deliveries(
     if let Some(merchant_id) = query.merchant_id {
         count_q = count_q.bind(merchant_id);
     }
-    if let Some(rider_id) = query.rider_id {
-        count_q = count_q.bind(rider_id);
+    if let Some(carrier_id) = query.carrier_id {
+        count_q = count_q.bind(carrier_id);
     }
     if let Some(date_from) = &query.date_from {
         if !date_from.is_empty() {
@@ -189,19 +189,19 @@ pub async fn get_delivery(
 
     match delivery {
         Ok(Some(del)) => {
-            let merchant = sqlx::query_as::<_, MerchantBasic>(
-                "SELECT id, business_name, business_phone AS contact_phone, email FROM merchants WHERE id = $1",
+            let merchant = sqlx::query_as::<_, MerchantWithLocation>(
+                "SELECT id, business_name, phone AS contact_phone, email, dispatch_latitude, dispatch_longitude, address FROM merchants WHERE id = $1",
             )
             .bind(del.merchant_id)
             .fetch_optional(state.db.as_ref())
             .await
             .unwrap_or(None);
             
-            let rider = if let Some(rider_id) = del.assigned_rider_id {
-                sqlx::query_as::<_, RiderBasic>(
-                    "SELECT id, full_name, phone_number FROM riders WHERE id = $1",
+            let carrier = if let Some(carrier_id) = del.assigned_carrier_id {
+                sqlx::query_as::<_, CarrierBasic>(
+                    "SELECT id, company_name, phone, email FROM carriers WHERE id = $1",
                 )
-                .bind(rider_id)
+                .bind(carrier_id)
                 .fetch_optional(state.db.as_ref())
                 .await
                 .unwrap_or(None)
@@ -211,8 +211,16 @@ pub async fn get_delivery(
             
             Ok(HttpResponse::Ok().json(DeliveryDetailsResponse {
                 delivery: del,
-                merchant: merchant.unwrap_or(MerchantBasic { id: uuid::Uuid::nil(), business_name: String::new(), contact_phone: String::new(), email: String::new() }),
-                rider,
+                merchant: merchant.unwrap_or(MerchantWithLocation { 
+                    id: uuid::Uuid::nil(), 
+                    business_name: String::new(), 
+                    contact_phone: String::new(), 
+                    email: String::new(),
+                    dispatch_latitude: None,
+                    dispatch_longitude: None,
+                    address: String::new(),
+                }),
+                carrier,
                 timeline: vec![],
             }))
         }
@@ -226,7 +234,7 @@ pub async fn create_delivery(
     state: web::Data<AppState>,
     req: web::Json<CreateDeliveryRequest>,
 ) -> Result<HttpResponse, Error> {
-    let delivery_cost = PricingService::calculate_price(req.distance_km) as i64;
+    let delivery_cost = PricingService::calculate_base_cost(req.distance_km);
     let otp_code = generate_otp();
     
     let delivery = sqlx::query_as::<_, crate::models::Delivery>(
@@ -272,20 +280,20 @@ pub async fn create_delivery(
     }
 }
 
-pub async fn assign_rider(
+pub async fn assign_carrier(
     state: web::Data<AppState>,
     path: web::Path<Uuid>,
-    req: web::Json<AssignRiderRequest>,
+    req: web::Json<AssignCarrierRequest>,
 ) -> Result<HttpResponse, Error> {
     let delivery_id = path.into_inner();
 
     let delivery = sqlx::query_as::<_, crate::models::Delivery>(
         &format!(
-            "UPDATE deliveries SET assigned_rider_id = $1, status = 'assigned', assigned_at = $2 WHERE id = $3 RETURNING {}",
+            "UPDATE deliveries SET assigned_carrier_id = $1, status = 'assigned', assigned_at = $2 WHERE id = $3 RETURNING {}",
             DELIVERY_RETURNING
         ),
     )
-    .bind(req.rider_id)
+    .bind(req.carrier_id)
     .bind(Utc::now())
     .bind(delivery_id)
     .fetch_one(state.db.as_ref())
@@ -299,7 +307,7 @@ pub async fn assign_rider(
             )
             .bind("delivery_assigned")
             .bind("Delivery Assigned")
-            .bind(format!("A delivery for {} has been assigned to a rider.", del.product_description))
+            .bind(format!("A delivery for {} has been assigned to a carrier.", del.product_description))
             .bind(del.id)
             .execute(state.db.as_ref())
             .await;
@@ -307,9 +315,9 @@ pub async fn assign_rider(
             Ok(HttpResponse::Ok().json(del))
         },
         Err(e) => {
-            eprintln!("SQL ERROR (assign_rider): {}", e);
+            eprintln!("SQL ERROR (assign_carrier): {}", e);
             Ok(HttpResponse::BadRequest().json(serde_json::json!({
-                "error": format!("Failed to assign rider: {}", e)
+                "error": format!("Failed to assign carrier: {}", e)
             })))
         }
     }
@@ -405,13 +413,151 @@ pub async fn get_awaiting_assignments(
     }
 }
 
+/// Auto-assign a delivery to the best available carrier based on:
+/// 1. Carrier status (must be 'active')
+/// 2. Performance score (higher is better)
+/// 3. Current workload (fewer active deliveries is better)
+pub async fn auto_assign_delivery(
+    state: web::Data<AppState>,
+    path: web::Path<Uuid>,
+) -> Result<HttpResponse, Error> {
+    let delivery_id = path.into_inner();
+
+    // Find the best available carrier
+    let best_carrier = sqlx::query_as::<_, (uuid::Uuid, String, i64, i64, f64)>(
+        r#"
+        SELECT r.id, r.company_name, r.completed_deliveries, r.failed_deliveries, r.performance_score
+        FROM carriers r
+        WHERE 
+            r.is_active = true
+            AND COALESCE(r.is_verified, true) = true
+            AND r.id NOT IN (
+                SELECT COALESCE(assigned_carrier_id, carrier_id) FROM deliveries 
+                WHERE COALESCE(assigned_carrier_id, carrier_id) IS NOT NULL 
+                AND LOWER(status::text) IN ('assigned', 'in_transit')
+            )
+        ORDER BY 
+            r.performance_score DESC NULLS LAST,
+            r.completed_deliveries DESC,
+            r.failed_deliveries ASC
+        LIMIT 1
+        "#
+    )
+    .fetch_optional(state.db.as_ref())
+    .await;
+
+    match best_carrier {
+        Ok(Some((carrier_id, carrier_name, _completed, _failed, score))) => {
+            // Assign the delivery to this carrier
+            let delivery = sqlx::query_as::<_, crate::models::Delivery>(
+                &format!(
+                    "UPDATE deliveries SET assigned_carrier_id = $1, status = 'assigned', assigned_at = $2 WHERE id = $3 RETURNING {}",
+                    DELIVERY_RETURNING
+                ),
+            )
+            .bind(carrier_id)
+            .bind(Utc::now())
+            .bind(delivery_id)
+            .fetch_one(state.db.as_ref())
+            .await;
+
+            match delivery {
+                Ok(del) => {
+                    // Create notification
+                    let _ = sqlx::query(
+                        "INSERT INTO notifications (notification_type, title, message, reference_id, is_read, created_at) VALUES ($1::notification_type, $2, $3, $4, false, NOW())"
+                    )
+                    .bind("delivery_assigned")
+                    .bind("Delivery Auto-Assigned")
+                    .bind(format!("Delivery assigned to {} automatically.", carrier_name))
+                    .bind(del.id)
+                    .execute(state.db.as_ref())
+                    .await;
+
+                    Ok(HttpResponse::Ok().json(serde_json::json!({
+                        "delivery": del,
+                        "assigned_carrier": {
+                            "id": carrier_id,
+                            "name": carrier_name,
+                            "performance_score": score
+                        }
+                    })))
+                },
+                Err(e) => {
+                    eprintln!("SQL ERROR (auto_assign_delivery): {}", e);
+                    Ok(HttpResponse::BadRequest().json(serde_json::json!({
+                        "error": format!("Failed to auto-assign: {}", e)
+                    })))
+                }
+            }
+        },
+        Ok(None) => {
+            Ok(HttpResponse::NotFound().json(serde_json::json!({
+                "error": "No available carriers found for auto-assignment"
+            })))
+        },
+        Err(e) => {
+            eprintln!("SQL ERROR (find_best_carrier): {}", e);
+            Ok(HttpResponse::InternalServerError().json(serde_json::json!({
+                "error": format!("Failed to find available carriers: {}", e)
+            })))
+        }
+    }
+}
+
+/// Get available carriers sorted by suitability for auto-assignment
+pub async fn get_available_carriers(
+    state: web::Data<AppState>,
+) -> Result<HttpResponse, Error> {
+    let carriers = sqlx::query_as::<_, (uuid::Uuid, String, String, i64, i64, f64)>(
+        r#"
+        SELECT r.id, r.company_name, 
+            CASE WHEN r.is_active THEN 'active' ELSE 'suspended' END as status,
+            r.completed_deliveries, r.failed_deliveries, r.performance_score
+        FROM carriers r
+        WHERE r.is_active = true
+        ORDER BY 
+            r.performance_score DESC NULLS LAST,
+            r.completed_deliveries DESC,
+            r.failed_deliveries ASC
+        "#
+    )
+    .fetch_all(state.db.as_ref())
+    .await;
+
+    match carriers {
+        Ok(rows) => {
+            let carriers: Vec<serde_json::Value> = rows.iter().map(|(id, name, status, completed, failed, score)| {
+                serde_json::json!({
+                    "id": id,
+                    "company_name": name,
+                    "status": status,
+                    "completed_deliveries": completed,
+                    "failed_deliveries": failed,
+                    "performance_score": score,
+                    "active_deliveries": 0
+                })
+            }).collect();
+            Ok(HttpResponse::Ok().json(carriers))
+        },
+        Err(e) => {
+            eprintln!("SQL ERROR (get_available_carriers): {}", e);
+            Ok(HttpResponse::InternalServerError().json(serde_json::json!({
+                "error": format!("Database query failed: {}", e)
+            })))
+        }
+    }
+}
+
 pub fn routes() -> actix_web::Scope {
     web::scope("/api/deliveries")
         .route("", web::get().to(list_deliveries))
         .route("", web::post().to(create_delivery))
         .route("/awaiting", web::get().to(get_awaiting_assignments))
+        .route("/available-carriers", web::get().to(get_available_carriers))
         .route("/{id}", web::get().to(get_delivery))
         .route("/{id}", web::put().to(update_delivery))
         .route("/{id}", web::delete().to(cancel_delivery))
-        .route("/{id}/assign", web::post().to(assign_rider))
+        .route("/{id}/assign", web::post().to(assign_carrier))
+        .route("/{id}/auto-assign", web::post().to(auto_assign_delivery))
 }

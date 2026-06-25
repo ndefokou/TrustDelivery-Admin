@@ -2,7 +2,7 @@ use sqlx::PgPool;
 use crate::models::Delivery;
 use uuid::Uuid;
 
-const DELIVERY_SELECT: &str = "id, product_description, product_value::float8 AS product_value, delivery_cost::float8 AS delivery_cost, distance_km, customer_name, customer_phone, delivery_address_text AS delivery_address, NULL::float8 AS delivery_lat, NULL::float8 AS delivery_lng, merchant_id, assigned_rider_id, status, failure_reason::text AS failure_reason, otp_code, otp_verified, created_at, NULL::timestamptz AS paid_at, assigned_at, picked_up_at, delivered_at, NULL::timestamptz AS failed_at";
+const DELIVERY_SELECT: &str = "id, product_description, product_value::float8 AS product_value, delivery_cost::float8 AS delivery_cost, distance_km, customer_name, customer_phone, delivery_address_text AS delivery_address, NULL::float8 AS delivery_lat, NULL::float8 AS delivery_lng, merchant_id, assigned_carrier_id, status, failure_reason::text AS failure_reason, otp_code, otp_verified, created_at, NULL::timestamptz AS paid_at, assigned_at, picked_up_at, delivered_at, NULL::timestamptz AS failed_at";
 
 #[allow(dead_code)]
 pub struct DeliveryService;
@@ -21,11 +21,11 @@ impl DeliveryService {
         }
     }
 
-    pub async fn assign_rider(delivery_id: Uuid, rider_id: Uuid, pool: &PgPool) -> Result<Delivery, sqlx::Error> {
+    pub async fn assign_carrier(delivery_id: Uuid, carrier_id: Uuid, pool: &PgPool) -> Result<Delivery, sqlx::Error> {
         let delivery = sqlx::query_as::<_, Delivery>(
-            &format!("UPDATE deliveries SET assigned_rider_id = $1, status = 'assigned', assigned_at = NOW() WHERE id = $2 RETURNING {}", DELIVERY_SELECT),
+            &format!("UPDATE deliveries SET assigned_carrier_id = $1, status = 'assigned', assigned_at = NOW() WHERE id = $2 RETURNING {}", DELIVERY_SELECT),
         )
-        .bind(rider_id)
+        .bind(carrier_id)
         .bind(delivery_id)
         .fetch_one(pool)
         .await;

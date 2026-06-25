@@ -7,8 +7,14 @@ use uuid::Uuid;
 pub enum DeliveryStatus {
     #[serde(rename = "awaiting_assignment")]
     AwaitingAssignment,
+    #[serde(rename = "awaiting_carrier_acceptance")]
+    AwaitingCarrierAcceptance,
     #[serde(rename = "assigned")]
     Assigned,
+    #[serde(rename = "accepted")]
+    Accepted,
+    #[serde(rename = "picked_up")]
+    PickedUp,
     #[serde(rename = "in_transit")]
     InTransit,
     #[serde(rename = "delivered")]
@@ -53,7 +59,7 @@ pub struct Delivery {
     pub delivery_lat: Option<f64>,
     pub delivery_lng: Option<f64>,
     pub merchant_id: Uuid,
-    pub assigned_rider_id: Option<Uuid>,
+    pub assigned_carrier_id: Option<Uuid>,
     pub status: DeliveryStatus,
     pub failure_reason: Option<String>,
     pub otp_code: Option<String>,
@@ -75,41 +81,29 @@ pub struct Delivery {
     #[sqlx(default)]
     pub collected_at: Option<DateTime<Utc>>,
     #[sqlx(default)]
-    pub rider_notes: Option<String>,
+    pub carrier_notes: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type)]
-#[sqlx(type_name = "rider_status", rename_all = "snake_case")]
-pub enum RiderStatus {
-    #[serde(rename = "active")]
-    Active,
-    #[serde(rename = "offline")]
-    Offline,
-    #[serde(rename = "busy")]
-    Busy,
-    #[serde(rename = "suspended")]
-    Suspended,
-}
+
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
-pub struct Rider {
+pub struct Carrier {
     pub id: Uuid,
-    pub full_name: String,
-    pub phone_number: String,
+    pub company_name: String,
+    pub phone: String,
     pub email: Option<String>,
-    pub national_id: String,
-    pub address: String,
-    pub motorbike_registration: String,
-    pub profile_photo: Option<String>,
-    pub status: RiderStatus,
-    pub current_lat: Option<f64>,
-    pub current_lng: Option<f64>,
-    pub total_deliveries: i32,
-    pub completed_deliveries: i32,
-    pub failed_deliveries: i32,
-    pub performance_score: f64,
-    pub total_revenue: f64,
+    pub address: Option<String>,
+    pub coverage_zones: Option<serde_json::Value>,
+    pub max_capacity: Option<i32>,
+    pub base_fee: Option<f64>,
+    pub price_per_km: Option<f64>,
+    pub is_active: bool,
     pub is_verified: bool,
+    pub total_deliveries: Option<i32>,
+    pub completed_deliveries: Option<i32>,
+    pub failed_deliveries: Option<i32>,
+    pub performance_score: Option<f64>,
+    pub total_revenue: Option<f64>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -232,7 +226,7 @@ pub enum ExpenseStatus {
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct Expense {
     pub id: Uuid,
-    pub rider_id: Uuid,
+    pub carrier_id: Uuid,
     pub category: ExpenseCategory,
     pub amount: f64,
     pub description: String,
@@ -245,10 +239,10 @@ pub struct Expense {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
-pub struct ExpenseWithRider {
+pub struct ExpenseWithCarrier {
     pub id: Uuid,
-    pub rider_id: Uuid,
-    pub rider_name: String,
+    pub carrier_id: Uuid,
+    pub carrier_name: String,
     pub category: ExpenseCategory,
     pub amount: f64,
     pub description: String,
@@ -271,8 +265,8 @@ pub enum NotificationType {
     ExpenseSubmission,
     #[serde(rename = "new_merchant_registration")]
     NewMerchantRegistration,
-    #[serde(rename = "new_rider_registration")]
-    NewRiderRegistration,
+    #[serde(rename = "new_carrier_registration")]
+    NewCarrierRegistration,
     #[serde(rename = "delivery_assigned")]
     DeliveryAssigned,
 }
@@ -333,7 +327,7 @@ pub struct DashboardStats {
     pub completed_today: i64,
     pub failed_today: i64,
     pub revenue_today: f64,
-    pub active_riders: i64,
+    pub active_carriers: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
@@ -356,9 +350,9 @@ pub struct StatusDistribution {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
-pub struct TopRider {
+pub struct TopCarrier {
     pub rank: i32,
-    pub rider_name: String,
+    pub carrier_name: String,
     pub deliveries_completed: i32,
     pub success_rate: f64,
     pub revenue_generated: f64,
@@ -371,13 +365,13 @@ pub struct DashboardData {
     pub deliveries_per_day: Vec<DailyDeliveries>,
     pub revenue_per_day: Vec<DailyRevenue>,
     pub status_distribution: Vec<StatusDistribution>,
-    pub top_performing_riders: Vec<TopRider>,
+    pub top_performing_carriers: Vec<TopCarrier>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
-pub struct RiderCollection {
+pub struct CarrierCollection {
     pub id: Uuid,
-    pub rider_id: Uuid,
+    pub carrier_id: Uuid,
     pub delivery_id: Uuid,
     pub amount_collected: f64,
     pub amount_returned: f64,
@@ -392,10 +386,10 @@ pub struct RiderCollection {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
-pub struct RiderCollectionWithDetails {
+pub struct CarrierCollectionWithDetails {
     pub id: Uuid,
-    pub rider_id: Uuid,
-    pub rider_name: String,
+    pub carrier_id: Uuid,
+    pub carrier_name: String,
     pub delivery_id: Uuid,
     pub customer_name: String,
     pub amount_collected: f64,
@@ -407,9 +401,9 @@ pub struct RiderCollectionWithDetails {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
-pub struct RiderCollectionSummary {
-    pub rider_id: Uuid,
-    pub rider_name: String,
+pub struct CarrierCollectionSummary {
+    pub carrier_id: Uuid,
+    pub carrier_name: String,
     pub total_collected: f64,
     pub total_returned: f64,
     pub outstanding_balance: f64,
@@ -419,7 +413,7 @@ pub struct RiderCollectionSummary {
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct CollectionLedger {
     pub id: Uuid,
-    pub rider_id: Option<Uuid>,
+    pub carrier_id: Option<Uuid>,
     pub delivery_id: Option<Uuid>,
     pub action: String,
     pub amount: f64,
@@ -431,7 +425,7 @@ pub struct CollectionLedger {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ValidateReturnRequest {
-    pub rider_id: Uuid,
+    pub carrier_id: Uuid,
     pub amount: f64,
     pub notes: Option<String>,
 }

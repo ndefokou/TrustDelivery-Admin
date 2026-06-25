@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { useDeliveries, useRiders, useAssignRider, useMerchants, useCreateDelivery } from '../hooks/useApi'
+import { useDeliveries, useMerchants } from '../hooks/useApi'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { Input, Select } from '../components/ui/Input'
 import { Table, Thead, Tbody, Tr, Th, Td } from '../components/ui/Table'
 import { StatusBadge } from '../components/ui/Badge'
-import { Modal } from '../components/ui/Modal'
-import { Eye, UserPlus, Search, Printer, Plus } from 'lucide-react'
+import { Eye, Search, Printer } from 'lucide-react'
 import { format } from 'date-fns'
 
 export default function Deliveries() {
@@ -20,36 +19,18 @@ export default function Deliveries() {
     date_from: '',
     date_to: '',
     merchant: '',
-    rider: '',
     page: 1,
     per_page: 20,
   })
 
-  // Sync status filter when URL query param changes (e.g. sidebar links)
   useEffect(() => {
     const status = searchParams.get('status') || ''
     setFilters((prev) => (prev.status === status ? prev : { ...prev, status, page: 1 }))
   }, [searchParams])
   const [showFilters, setShowFilters] = useState(false)
-  const [showAssignModal, setShowAssignModal] = useState(false)
-  const [showCreateModal, setShowCreateModal] = useState(false)
-  const [selectedDelivery, setSelectedDelivery] = useState<string | null>(null)
-  const [selectedRider, setSelectedRider] = useState('')
-  const [createForm, setCreateForm] = useState({
-    product_description: '',
-    product_value: 0,
-    distance_km: 0,
-    customer_name: '',
-    customer_phone: '',
-    delivery_address: '',
-    merchant_id: '',
-  })
 
   const { data: deliveries, isLoading, error: deliveriesError } = useDeliveries(filters)
-  const { data: riders } = useRiders()
   const { data: merchantsData } = useMerchants()
-  const assignRider = useAssignRider()
-  const createDelivery = useCreateDelivery()
 
   const getMerchantName = (merchantId: string) => {
     const merchant = merchantsData?.merchants?.find((m: any) => m.id === merchantId)
@@ -60,43 +41,10 @@ export default function Deliveries() {
     navigate(`/deliveries/${id}`)
   }
 
-  const handleAssign = (deliveryId: string) => {
-    setSelectedDelivery(deliveryId)
-    setShowAssignModal(true)
-  }
-
-  const handleConfirmAssign = async () => {
-    if (!selectedDelivery || !selectedRider) return
-    try {
-      await assignRider.mutateAsync({ deliveryId: selectedDelivery, riderId: selectedRider })
-      setShowAssignModal(false)
-      setSelectedRider('')
-      setSelectedDelivery(null)
-    } catch (error) {
-      console.error('Failed to assign rider:', error)
-    }
-  }
-
   const handlePrevPage = () => setFilters((prev) => ({ ...prev, page: Math.max(1, prev.page - 1) }))
   const handleNextPage = () => {
     if (deliveries && deliveries.total > filters.page * filters.per_page) {
       setFilters((prev) => ({ ...prev, page: prev.page + 1 }))
-    }
-  }
-
-  const handleCreateDelivery = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!createForm.merchant_id) return
-    try {
-      await createDelivery.mutateAsync({
-        ...createForm,
-        product_value: Number(createForm.product_value),
-        distance_km: Number(createForm.distance_km),
-      })
-      setShowCreateModal(false)
-      setCreateForm({ product_description: '', product_value: 0, distance_km: 0, customer_name: '', customer_phone: '', delivery_address: '', merchant_id: '' })
-    } catch (error) {
-      console.error('Failed to create delivery:', error)
     }
   }
 
@@ -107,17 +55,14 @@ export default function Deliveries() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Deliveries</h1>
-        <div className="flex gap-2">
-          <Button variant="secondary" onClick={() => setShowFilters(!showFilters)}>
-            <Search size={16} />
-            Search
-          </Button>
-          <Button onClick={() => setShowCreateModal(true)}>
-            <Plus size={16} />
-            Create
-          </Button>
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Deliveries</h1>
+          <p className="text-sm text-gray-500 mt-1">Read-only monitoring view</p>
         </div>
+        <Button variant="secondary" onClick={() => setShowFilters(!showFilters)}>
+          <Search size={16} />
+          Search
+        </Button>
       </div>
 
       {deliveriesError && (
@@ -238,11 +183,6 @@ export default function Deliveries() {
                         <Button size="sm" variant="ghost" onClick={() => handleView(delivery.id)}>
                           <Eye size={14} />
                         </Button>
-                        {delivery.status === 'awaiting_assignment' && (
-                          <Button size="sm" variant="primary" onClick={() => handleAssign(delivery.id)}>
-                            <UserPlus size={14} />
-                          </Button>
-                        )}
                         <Button size="sm" variant="ghost" onClick={handlePrint} className="hidden sm:flex">
                           <Printer size={14} />
                         </Button>
@@ -267,108 +207,6 @@ export default function Deliveries() {
           )}
         </CardContent>
       </Card>
-
-      <Modal
-        isOpen={showAssignModal}
-        onClose={() => { setShowAssignModal(false); setSelectedRider(''); setSelectedDelivery(null) }}
-        title="Assign Rider"
-      >
-        <div className="space-y-4">
-          <p className="text-gray-600 dark:text-gray-400">
-            Select a rider to assign to this delivery.
-          </p>
-          <Select
-            label="Select Rider"
-            value={selectedRider}
-            onChange={(e) => setSelectedRider(e.target.value)}
-          >
-            <option value="">Choose a rider...</option>
-            {riders?.riders?.filter((r: any) => r.status === 'active').map((rider: any) => (
-              <option key={rider.id} value={rider.id}>
-                {rider.full_name} - {rider.completed_deliveries} completed
-              </option>
-            ))}
-          </Select>
-          <div className="flex gap-2 justify-end">
-            <Button variant="secondary" onClick={() => setShowAssignModal(false)}>Cancel</Button>
-            <Button onClick={handleConfirmAssign} disabled={!selectedRider || assignRider.isPending}>
-              {assignRider.isPending ? 'Assigning...' : 'Assign Rider'}
-            </Button>
-          </div>
-        </div>
-      </Modal>
-
-      <Modal
-        isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-        title="Create Delivery"
-        size="lg"
-      >
-        <form onSubmit={handleCreateDelivery} className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input
-              label="Product Description"
-              value={createForm.product_description}
-              onChange={(e) => setCreateForm({ ...createForm, product_description: e.target.value })}
-              required
-            />
-            <Input
-              label="Product Value (FCFA)"
-              type="number"
-              value={createForm.product_value}
-              onChange={(e) => setCreateForm({ ...createForm, product_value: Number(e.target.value) })}
-              required
-            />
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input
-              label="Distance (km)"
-              type="number"
-              step="0.1"
-              value={createForm.distance_km}
-              onChange={(e) => setCreateForm({ ...createForm, distance_km: Number(e.target.value) })}
-              required
-            />
-            <Select
-              label="Merchant"
-              value={createForm.merchant_id}
-              onChange={(e) => setCreateForm({ ...createForm, merchant_id: e.target.value })}
-              required
-            >
-              <option value="">Select merchant...</option>
-              {merchantsData?.merchants?.map((m: any) => (
-                <option key={m.id} value={m.id}>{m.business_name}</option>
-              ))}
-            </Select>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input
-              label="Customer Name"
-              value={createForm.customer_name}
-              onChange={(e) => setCreateForm({ ...createForm, customer_name: e.target.value })}
-              required
-            />
-            <Input
-              label="Customer Phone"
-              value={createForm.customer_phone}
-              onChange={(e) => setCreateForm({ ...createForm, customer_phone: e.target.value })}
-              required
-            />
-          </div>
-          <Input
-            label="Delivery Address"
-            value={createForm.delivery_address}
-            onChange={(e) => setCreateForm({ ...createForm, delivery_address: e.target.value })}
-            required
-          />
-          <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end">
-            <Button type="button" variant="secondary" onClick={() => setShowCreateModal(false)}>Cancel</Button>
-            <Button type="submit" disabled={createDelivery.isPending}>
-              {createDelivery.isPending ? 'Creating...' : 'Create Delivery'}
-            </Button>
-          </div>
-        </form>
-      </Modal>
     </div>
   )
 }

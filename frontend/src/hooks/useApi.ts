@@ -2,12 +2,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import {
   Delivery,
-  Rider,
+  Carrier,
   Merchant,
   Notification,
   DashboardData,
   Settings,
-  TopRider,
+  TopCarrier,
   Expense,
   Payment,
 } from '../types'
@@ -36,8 +36,33 @@ export function useDeliveries(filters?: Record<string, unknown>) {
   })
 }
 
+export interface MerchantWithLocation {
+  id: string
+  business_name: string
+  contact_phone: string
+  email: string
+  dispatch_latitude: number | null
+  dispatch_longitude: number | null
+  address: string
+}
+
+export interface DeliveryDetailsResponse {
+  delivery: Delivery
+  merchant: MerchantWithLocation
+  carrier: {
+    id: string
+    company_name: string
+    phone: string
+  } | null
+  timeline: Array<{
+    status: string
+    timestamp: string
+    description: string
+  }>
+}
+
 export function useDelivery(id: string) {
-  return useQuery<Delivery>({
+  return useQuery<DeliveryDetailsResponse>({
     queryKey: ['delivery', id],
     queryFn: async () => {
       const { data } = await api.get(`/deliveries/${id}`)
@@ -57,16 +82,40 @@ export function useAwaitingDeliveries() {
   })
 }
 
-export function useAssignRider() {
+export function useAssignCarrier() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async ({ deliveryId, riderId }: { deliveryId: string; riderId: string }) => {
-      const { data } = await api.post(`/deliveries/${deliveryId}/assign`, { rider_id: riderId })
+    mutationFn: async ({ deliveryId, carrierId }: { deliveryId: string; carrierId: string }) => {
+      const { data } = await api.post(`/deliveries/${deliveryId}/assign`, { carrier_id: carrierId })
       return data
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['deliveries'], exact: false })
       queryClient.invalidateQueries({ queryKey: ['delivery'], exact: false })
+    },
+  })
+}
+
+export function useAutoAssign() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (deliveryId: string) => {
+      const { data } = await api.post(`/deliveries/${deliveryId}/auto-assign`)
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['deliveries'], exact: false })
+      queryClient.invalidateQueries({ queryKey: ['delivery'], exact: false })
+    },
+  })
+}
+
+export function useAvailableCarriers() {
+  return useQuery({
+    queryKey: ['available-carriers'],
+    queryFn: async () => {
+      const { data } = await api.get('/deliveries/available-carriers')
+      return data
     },
   })
 }
@@ -109,132 +158,132 @@ export function useCancelDelivery() {
   })
 }
 
-/* ───────────────────────── Riders ───────────────────────── */
+/* ───────────────────────── Carriers ───────────────────────── */
 
-export function useRiders(filters?: Record<string, unknown>) {
+export function useCarriers(filters?: Record<string, unknown>) {
   return useQuery({
-    queryKey: ['riders', filters],
+    queryKey: ['carriers', filters],
     queryFn: async () => {
-      const { data } = await api.get('/riders', { params: filters })
+      const { data } = await api.get('/carriers', { params: filters })
       return data
     },
   })
 }
 
-export function useRider(id: string) {
-  return useQuery<Rider>({
-    queryKey: ['rider', id],
+export function useCarrier(id: string) {
+  return useQuery<Carrier>({
+    queryKey: ['carrier', id],
     queryFn: async () => {
-      const { data } = await api.get(`/riders/${id}`)
+      const { data } = await api.get(`/carriers/${id}`)
       return data
     },
     enabled: !!id,
   })
 }
 
-export function useCreateRider() {
+export function useCreateCarrier() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (rider: Partial<Rider>) => {
-      const { data } = await api.post('/riders', rider)
+    mutationFn: async (carrier: Partial<Carrier>) => {
+      const { data } = await api.post('/carriers', carrier)
       return data
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['riders'] })
+      queryClient.invalidateQueries({ queryKey: ['carriers'] })
     },
   })
 }
 
-export function useUpdateRider() {
+export function useUpdateCarrier() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async ({ id, rider }: { id: string; rider: Partial<Rider> }) => {
-      const { data } = await api.put(`/riders/${id}`, rider)
+    mutationFn: async ({ id, carrier }: { id: string; carrier: Partial<Carrier> }) => {
+      const { data } = await api.put(`/carriers/${id}`, carrier)
       return data
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['riders'] })
-      queryClient.invalidateQueries({ queryKey: ['rider', variables.id] })
+      queryClient.invalidateQueries({ queryKey: ['carriers'] })
+      queryClient.invalidateQueries({ queryKey: ['carrier', variables.id] })
     },
   })
 }
 
-export function useSuspendRider() {
+export function useSuspendCarrier() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (id: string) => {
-      const { data } = await api.post(`/riders/${id}/suspend`)
+      const { data } = await api.post(`/carriers/${id}/suspend`)
       return data
     },
     onMutate: async (id) => {
-      await queryClient.cancelQueries({ queryKey: ['rider', id] })
-      await queryClient.cancelQueries({ queryKey: ['riders'] })
-      const previousRider = queryClient.getQueryData<Rider>(['rider', id])
-      queryClient.setQueryData<Rider>(['rider', id], (old) => {
+      await queryClient.cancelQueries({ queryKey: ['carrier', id] })
+      await queryClient.cancelQueries({ queryKey: ['carriers'] })
+      const previousCarrier = queryClient.getQueryData<Carrier>(['carrier', id])
+      queryClient.setQueryData<Carrier>(['carrier', id], (old) => {
         if (!old) return old
         return { ...old, status: 'suspended' as const }
       })
-      queryClient.setQueriesData<{ riders: Rider[] }>(
-        { queryKey: ['riders'] },
+      queryClient.setQueriesData<{ carriers: Carrier[] }>(
+        { queryKey: ['carriers'] },
         (old) => {
-          if (!old || !old.riders) return old
+          if (!old || !old.carriers) return old
           return {
             ...old,
-            riders: old.riders.map((r) => (r.id === id ? { ...r, status: 'suspended' as const } : r)),
+            carriers: old.carriers.map((c) => (c.id === id ? { ...c, status: 'suspended' as const } : c)),
           }
         }
       )
-      return { previousRider }
+      return { previousCarrier }
     },
     onError: (_err, id, context) => {
-      if (context?.previousRider) {
-        queryClient.setQueryData(['rider', id], context.previousRider)
+      if (context?.previousCarrier) {
+        queryClient.setQueryData(['carrier', id], context.previousCarrier)
       }
-      queryClient.invalidateQueries({ queryKey: ['riders'] })
+      queryClient.invalidateQueries({ queryKey: ['carriers'] })
     },
     onSettled: (_data, _error, id) => {
-      queryClient.invalidateQueries({ queryKey: ['rider', id] })
-      queryClient.invalidateQueries({ queryKey: ['riders'] })
+      queryClient.invalidateQueries({ queryKey: ['carrier', id] })
+      queryClient.invalidateQueries({ queryKey: ['carriers'] })
     },
   })
 }
 
-export function useActivateRider() {
+export function useActivateCarrier() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (id: string) => {
-      const { data } = await api.post(`/riders/${id}/activate`)
+      const { data } = await api.post(`/carriers/${id}/activate`)
       return data
     },
     onMutate: async (id) => {
-      await queryClient.cancelQueries({ queryKey: ['rider', id] })
-      await queryClient.cancelQueries({ queryKey: ['riders'] })
-      const previousRider = queryClient.getQueryData<Rider>(['rider', id])
-      queryClient.setQueryData<Rider>(['rider', id], (old) => {
+      await queryClient.cancelQueries({ queryKey: ['carrier', id] })
+      await queryClient.cancelQueries({ queryKey: ['carriers'] })
+      const previousCarrier = queryClient.getQueryData<Carrier>(['carrier', id])
+      queryClient.setQueryData<Carrier>(['carrier', id], (old) => {
         if (!old) return old
         return { ...old, status: 'active' as const }
       })
-      queryClient.setQueriesData<{ riders: Rider[] }>(
-        { queryKey: ['riders'] },
+      queryClient.setQueriesData<{ carriers: Carrier[] }>(
+        { queryKey: ['carriers'] },
         (old) => {
-          if (!old || !old.riders) return old
+          if (!old || !old.carriers) return old
           return {
             ...old,
-            riders: old.riders.map((r) => (r.id === id ? { ...r, status: 'active' as const } : r)),
+            carriers: old.carriers.map((c) => (c.id === id ? { ...c, status: 'active' as const } : c)),
           }
         }
       )
-      return { previousRider }
+      return { previousCarrier }
     },
     onError: (_err, id, context) => {
-      if (context?.previousRider) {
-        queryClient.setQueryData(['rider', id], context.previousRider)
+      if (context?.previousCarrier) {
+        queryClient.setQueryData(['carrier', id], context.previousCarrier)
       }
-      queryClient.invalidateQueries({ queryKey: ['riders'] })
+      queryClient.invalidateQueries({ queryKey: ['carriers'] })
     },
     onSettled: (_data, _error, id) => {
-      queryClient.invalidateQueries({ queryKey: ['rider', id] })
-      queryClient.invalidateQueries({ queryKey: ['riders'] })
+      queryClient.invalidateQueries({ queryKey: ['carrier', id] })
+      queryClient.invalidateQueries({ queryKey: ['carriers'] })
     },
   })
 }
@@ -243,30 +292,30 @@ export function useReviewExpense() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async ({ id, status, admin_notes }: { id: string; status: string; admin_notes?: string }) => {
-      const { data } = await api.post(`/riders/expenses/${id}/review`, { status, admin_notes })
+      const { data } = await api.post(`/carriers/expenses/${id}/review`, { status, admin_notes })
       return data
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['rider-expenses'] })
+      queryClient.invalidateQueries({ queryKey: ['carrier-expenses'] })
     },
   })
 }
 
-export function useRiderPerformance() {
-  return useQuery<TopRider[]>({
-    queryKey: ['rider-performance'],
+export function useCarrierPerformance() {
+  return useQuery<TopCarrier[]>({
+    queryKey: ['carrier-performance'],
     queryFn: async () => {
-      const { data } = await api.get('/riders/performance')
+      const { data } = await api.get('/carriers/performance')
       return data
     },
   })
 }
 
-export function useRiderExpenses() {
+export function useCarrierExpenses() {
   return useQuery<Expense[]>({
-    queryKey: ['rider-expenses'],
+    queryKey: ['carrier-expenses'],
     queryFn: async () => {
-      const { data } = await api.get('/riders/expenses')
+      const { data } = await api.get('/carriers/expenses')
       return data
     },
   })

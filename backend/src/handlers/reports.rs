@@ -46,15 +46,15 @@ pub async fn revenue_report(state: web::Data<AppState>) -> Result<HttpResponse, 
     Ok(HttpResponse::Ok().json(revenue))
 }
 
-pub async fn rider_performance(state: web::Data<AppState>) -> Result<HttpResponse, Error> {
-    let riders = sqlx::query_as::<_, crate::models::TopRider>(
-        "SELECT ROW_NUMBER() OVER (ORDER BY COUNT(d.id) DESC)::int4 as rank, r.full_name as rider_name, COUNT(d.id)::int4 as deliveries_completed, CASE WHEN COUNT(*) > 0 THEN (COUNT(*) FILTER (WHERE LOWER(d.status::text) = 'delivered')::float8 / COUNT(*)::float8) * 100 ELSE 0 END as success_rate, SUM(COALESCE(d.delivery_fee, d.delivery_cost, 0))::float8 as revenue_generated FROM riders r LEFT JOIN deliveries d ON COALESCE(d.assigned_rider_id, d.rider_id) = r.id GROUP BY r.id, r.full_name ORDER BY deliveries_completed DESC LIMIT 10"
+pub async fn carrier_performance(state: web::Data<AppState>) -> Result<HttpResponse, Error> {
+    let carriers = sqlx::query_as::<_, crate::models::TopCarrier>(
+        "SELECT ROW_NUMBER() OVER (ORDER BY COUNT(d.id) DESC)::int4 as rank, r.company_name as carrier_name, COUNT(d.id)::int4 as deliveries_completed, CASE WHEN COUNT(*) > 0 THEN (COUNT(*) FILTER (WHERE LOWER(d.status::text) = 'delivered')::float8 / COUNT(*)::float8) * 100 ELSE 0 END as success_rate, SUM(COALESCE(d.delivery_fee, d.delivery_cost, 0))::float8 as revenue_generated FROM carriers r LEFT JOIN deliveries d ON COALESCE(d.assigned_carrier_id, d.carrier_id) = r.id GROUP BY r.id, r.company_name ORDER BY deliveries_completed DESC LIMIT 10"
     )
     .fetch_all(state.db.as_ref())
     .await
     .unwrap_or_default();
 
-    Ok(HttpResponse::Ok().json(riders))
+    Ok(HttpResponse::Ok().json(carriers))
 }
 
 pub async fn failed_deliveries_report(state: web::Data<AppState>) -> Result<HttpResponse, Error> {
@@ -74,6 +74,6 @@ pub fn routes() -> actix_web::Scope {
         .route("/weekly", web::get().to(weekly_report))
         .route("/monthly", web::get().to(monthly_report))
         .route("/revenue", web::get().to(revenue_report))
-        .route("/rider-performance", web::get().to(rider_performance))
+        .route("/carrier-performance", web::get().to(carrier_performance))
         .route("/failed-deliveries", web::get().to(failed_deliveries_report))
 }

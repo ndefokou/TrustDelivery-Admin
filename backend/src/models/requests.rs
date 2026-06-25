@@ -24,8 +24,8 @@ pub struct UpdateDeliveryRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AssignRiderRequest {
-    pub rider_id: Uuid,
+pub struct AssignCarrierRequest {
+    pub carrier_id: Uuid,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -33,7 +33,7 @@ pub struct DeliveryFilter {
     pub status: Option<String>,
     pub merchant_id: Option<Uuid>,
     pub merchant: Option<String>,
-    pub rider_id: Option<Uuid>,
+    pub carrier_id: Option<Uuid>,
     pub date_from: Option<String>,
     pub date_to: Option<String>,
     pub search: Option<String>,
@@ -59,8 +59,8 @@ pub struct DeliveryTimelineEvent {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DeliveryDetailsResponse {
     pub delivery: crate::models::Delivery,
-    pub merchant: MerchantBasic,
-    pub rider: Option<RiderBasic>,
+    pub merchant: MerchantWithLocation,
+    pub carrier: Option<CarrierBasic>,
     pub timeline: Vec<DeliveryTimelineEvent>,
 }
 
@@ -73,49 +73,56 @@ pub struct MerchantBasic {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
-pub struct RiderBasic {
+pub struct MerchantWithLocation {
     pub id: Uuid,
-    pub full_name: String,
-    pub phone_number: String,
+    pub business_name: String,
+    pub contact_phone: String,
+    pub email: String,
+    pub dispatch_latitude: Option<f64>,
+    pub dispatch_longitude: Option<f64>,
+    pub address: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct CarrierBasic {
+    pub id: Uuid,
+    pub company_name: String,
+    pub phone: String,
     pub email: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CreateRiderRequest {
-    pub full_name: String,
-    pub phone_number: String,
+pub struct CreateCarrierRequest {
+    pub company_name: String,
+    pub phone: String,
     pub email: String,
     pub password: String,
-    pub national_id: String,
-    pub address: String,
-    pub motorbike_registration: String,
     #[serde(default)]
-    pub profile_photo: Option<String>,
+    pub address: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UpdateRiderRequest {
-    pub full_name: Option<String>,
-    pub phone_number: Option<String>,
+pub struct UpdateCarrierRequest {
+    pub company_name: Option<String>,
+    pub phone: Option<String>,
     pub email: Option<String>,
     pub address: Option<String>,
-    pub profile_photo: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UpdateRiderPasswordRequest {
+pub struct UpdateCarrierPasswordRequest {
     pub password: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RiderFilter {
+pub struct CarrierFilter {
     pub status: Option<String>,
     pub search: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RiderListResponse {
-    pub riders: Vec<crate::models::Rider>,
+pub struct CarrierListResponse {
+    pub carriers: Vec<crate::models::Carrier>,
     pub total: i64,
     pub page: i32,
     pub per_page: i32,
@@ -191,7 +198,7 @@ pub struct PaymentFilter {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateExpenseRequest {
-    pub rider_id: Uuid,
+    pub carrier_id: Uuid,
     pub category: crate::models::ExpenseCategory,
     pub amount: f64,
     pub description: String,
